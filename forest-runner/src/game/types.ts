@@ -701,3 +701,114 @@ export interface RankingState {
 }
 
 export type RankingScreenType = 'ranking' | 'challengeSettlement'
+
+export type StoryEventType = 'dialogue' | 'choice' | 'encounter' | 'mystery' | 'blessing' | 'trap'
+export type StoryEffectType = 
+  | 'score_boost' 
+  | 'speed_boost' 
+  | 'invincible' 
+  | 'coin_bonus' 
+  | 'resource_bonus' 
+  | 'slow_down' 
+  | 'jump_boost' 
+  | 'coin_penalty' 
+  | 'score_penalty'
+  | 'buff_speed'
+  | 'buff_jump'
+  | 'buff_magnet'
+
+export interface StoryEffect {
+  type: StoryEffectType
+  value: number
+  duration?: number
+  description: string
+}
+
+export interface StoryReward {
+  coins?: number
+  resources?: Partial<Record<ResourceType, number>>
+  score?: number
+  codexId?: string
+  buff?: ActiveBuff
+}
+
+export interface StoryChoice {
+  id: string
+  text: string
+  nextDialogueId?: string
+  effects?: StoryEffect[]
+  rewards?: StoryReward
+  unlocksCodex?: string
+  consequenceText?: string
+}
+
+export interface StoryDialogue {
+  id: string
+  speaker: string
+  speakerAvatar?: string
+  text: string
+  choices?: StoryChoice[]
+  nextDialogueId?: string
+  isEnd?: boolean
+  autoReward?: StoryReward
+  autoEffects?: StoryEffect[]
+}
+
+export interface StoryEvent {
+  id: string
+  type: StoryEventType
+  name: string
+  icon: string
+  description: string
+  triggerDistance: number
+  triggerChance: number
+  applicableThemes?: ChapterTheme[]
+  dialogues: StoryDialogue[]
+  startDialogueId: string
+  exclusiveRewards?: boolean
+  requiredCodex?: string
+}
+
+export interface CodexEntry {
+  id: string
+  name: string
+  icon: string
+  description: string
+  category: 'character' | 'creature' | 'location' | 'item' | 'lore'
+  rarity: 'common' | 'rare' | 'epic' | 'legendary'
+  unlocked: boolean
+  unlockedAt?: number
+  backgroundStory: string
+  imageHint?: string
+}
+
+export interface ActiveStoryEvent {
+  eventId: string
+  currentDialogueId: string
+  startTime: number
+  paused: boolean
+  history: { dialogueId: string; choiceId?: string }[]
+}
+
+export interface StoryState {
+  triggeredEvents: Record<string, number>
+  activeEvent: ActiveStoryEvent | null
+  eventHistory: {
+    eventId: string
+    completedAt: number
+    choicesMade: string[]
+    rewardsClaimed: StoryReward | null
+  }[]
+  activeEffects: {
+    type: StoryEffectType
+    value: number
+    remainingFrames: number
+    source: string
+  }[]
+}
+
+export interface StoryCodexState {
+  entries: Record<string, CodexEntry>
+  totalUnlocked: number
+  categories: Record<string, string[]>
+}

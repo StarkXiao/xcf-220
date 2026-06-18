@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { getCheckInStats, hasCheckedInToday, canCheckInToday } from '../game/checkInStore'
 
+import { getTotalProgress } from '../game/codexStore'
+
 defineEmits<{
   (e: 'start'): void
   (e: 'showAchievements'): void
@@ -12,7 +14,10 @@ defineEmits<{
   (e: 'showCosmetic'): void
   (e: 'showCheckIn'): void
   (e: 'showRanking'): void
+  (e: 'showCodex'): void
 }>()
+
+const codexProgress = getTotalProgress()
 
 const props = defineProps<{
   highScore: number
@@ -107,6 +112,11 @@ const hasCheckedIn = computed(() => hasCheckedInToday())
         <button class="btn btn-ranking" @click="$emit('showRanking')">
           <span class="btn-icon">🏆</span>
           好友排行
+        </button>
+        <button class="btn btn-codex" @click="$emit('showCodex')">
+          <span class="btn-icon">📖</span>
+          冒险图鉴
+          <span v-if="codexProgress.unlocked > 0" class="codex-count">{{ codexProgress.unlocked }}/{{ codexProgress.total }}</span>
         </button>
       </div>
 
@@ -644,6 +654,31 @@ const hasCheckedIn = computed(() => hasCheckedInToday())
 .btn-ranking:active {
   box-shadow: 0 2px 0 #BF360C, 0 4px 10px rgba(0,0,0,0.2);
   transform: translateY(4px) scale(0.98);
+}
+
+.btn-codex {
+  background: linear-gradient(180deg, #00BCD4 0%, #0097A7 100%);
+  color: white;
+  box-shadow: 0 6px 0 #006064, 0 8px 15px rgba(0,0,0,0.2);
+  position: relative;
+}
+
+.btn-codex:hover {
+  box-shadow: 0 8px 0 #006064, 0 10px 20px rgba(0,0,0,0.25);
+}
+
+.btn-codex:active {
+  box-shadow: 0 2px 0 #006064, 0 4px 10px rgba(0,0,0,0.2);
+  transform: translateY(4px) scale(0.98);
+}
+
+.codex-count {
+  background: rgba(255,255,255,0.2);
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-left: 8px;
 }
 
 .btn-icon {

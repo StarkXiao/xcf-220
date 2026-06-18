@@ -8,7 +8,12 @@ import type {
   ResourceType,
   ChapterTheme,
   AreaNode,
-  FollowPet
+  FollowPet,
+  StoryEvent,
+  StoryReward,
+  StoryEffect,
+  ActiveStoryEvent,
+  CodexEntry
 } from './types'
 import { GameRenderer } from './renderer'
 import { checkCollision, randomRange, randomInt } from './utils'
@@ -29,6 +34,18 @@ import {
 } from './shopStore'
 import type { SkinColorConfig } from './types'
 import { getEquippedColors, getEquippedTrailColors, getEquippedTitle } from './cosmeticStore'
+import {
+  triggerStoryCheck,
+  startStoryEvent,
+  processPendingEffects,
+  processPendingRewards,
+  addActiveEffect,
+  updateActiveEffects,
+  getActiveEffectValue,
+  isStoryActive,
+  clearActiveEffectsForNewRun
+} from './storyStore'
+import { unlockCodexEntry } from './codexStore'
 
 const GRAVITY = 0.6
 const BASE_JUMP_FORCE = -14
@@ -112,6 +129,12 @@ export class GameEngine {
   private trailColors: { trailColor?: string; particleColor?: string } = {}
   private playerTitle: string | null = null
   private trailParticles: Array<{ x: number; y: number; life: number; maxLife: number; size: number; color: string }> = []
+
+  private onStoryEventTrigger?: (event: StoryEvent, activeEvent: ActiveStoryEvent) => void
+  private onStoryRewardCallback?: (rewards: StoryReward) => void
+  private onCodexUnlockCallback?: (entry: CodexEntry) => void
+  private lastStoryCheckDistance: number = 0
+  private STORY_CHECK_INTERVAL: number = 100
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -245,8 +268,9 @@ export class GameEngine {
 
   jump(): void {
     if (!this.gameState.isRunning || this.gameState.isGameOver || this.gameState.isPaused) return
+    if (isStoryActive()) return
 
-    const jumpBoost = 1 + (this.buffs['jump_boost'] || 0)
+    const jumpBoost = 1 + (this.buffs['jump_boost'] || 0) + getActiveEffectValue('jump_boost') + getActiveEffectValue('buff_jump')
     if (this.player.jumpCount === 0) {
       this.player.velocityY = BASE_JUMP_FORCE * jumpBoost
       this.player.isJumping = true
@@ -264,6 +288,18 @@ export class GameEngine {
 
   onPlayerJump(callback: () => void): void {
     this.playerJumpCallback = callback
+  }
+
+  onStoryEvent(callback: (event: StoryEvent, activeEvent: ActiveStoryEvent) => void): void {
+    this.onStoryEventTrigger = callback
+  }
+
+  onStoryReward(callback: (rewards: StoryReward) => void): void {
+    this.onStoryRewardCallback = callback
+  }
+
+  onCodex(callback: (entry: CodexEntry) => void): void {
+    this.onCodexUnlockCallback = callback
   }
 
   private createJumpParticles(): void {
@@ -396,31 +432,44 @@ export class GameEngine {
   private update(deltaTime: number): void {
     if (!this.gameState.isRunning || this.gameState.isGameOver || this.gameState.isPaused) return
 
+    if (isStoryActive()) return
+
     const dt = deltaTime / 16.67
 
     this.updateStartEffectTimers(dt)
+    updateActiveEffects(dt)
 
     if (this.gameState.speed < this.gameState.maxSpeed) {
       this.gameState.speed += SPEED_INCREMENT * dt
     }
 
+    const storySpeedBoost = getActiveEffectValue('speed_boost')
+    const storyBuffSpeed = getActiveEffectValue('buff_speed')
+    const storySlowDown = getActiveEffectValue('slow_down')
+    const effectiveSpeed = this.gameState.speed * (1 + storySpeedBoost + storyBuffSpeed) * Math.max(0.3, 1 - storySlowDown)
+
     const scoreMultiplier = 1 + (this.buffs['score_multiplier'] || 0)
-    this.gameState.distance += this.gameState.speed * 0.1 * dt
-    this.gameState.score += this.gameState.speed * 0.2 * dt * scoreMultiplier
+    const storyScoreBoost = getActiveEffectValue('score_boost')
+    const storyScorePenalty = getActiveEffectValue('score_penalty')
+    const finalScoreMultiplier = scoreMultiplier * (1 + storyScoreBoost) * Math.max(0.5, 1 - storyScorePenalty)
+
+    this.gameState.distance += effectiveSpeed * 0.1 * dt
+    this.gameState.score += effectiveSpeed * 0.2 * dt * finalScoreMultiplier
 
     this.updatePlayer(dt)
     this.updateFollowPet(dt)
     this.applyMagnetEffect(dt)
-    this.updateObstacles(dt)
-    this.updateCollectibles(dt)
+    this.updateObstacles(dt, effectiveSpeed)
+    this.updateCollectibles(dt, effectiveSpeed)
     this.updateClouds(dt)
     this.updateParticles(dt)
     this.updateTrailParticles(dt)
 
-    this.groundOffset += this.gameState.speed * dt
+    this.groundOffset += effectiveSpeed * dt
 
     this.obstacleTimer += dt
-    const speedFactor = (this.currentTheme ? THEMES[this.currentTheme].baseSpeed : DEFAULT_BASE_SPEED) / this.gameState.speed
+    const baseSpeedForInterval = this.currentTheme ? THEMES[this.currentTheme].baseSpeed : DEFAULT_BASE_SPEED
+    const speedFactor = baseSpeedForInterval / effectiveSpeed
     const densityFactor = 1 / this.obstacleDensity
     const themeMultiplier = this.currentTheme ? THEMES[this.currentTheme].obstaclePool.spawnRateMultiplier : 1.0
     const minInterval = OBSTACLE_MIN_INTERVAL * speedFactor * densityFactor / themeMultiplier
@@ -450,6 +499,8 @@ export class GameEngine {
 
     this.checkCollisions()
     this.checkAchievementsProgress()
+    this.checkStoryEventTrigger()
+    this.processStoryQueues()
   }
 
   private updatePlayer(dt: number): void {
@@ -480,9 +531,10 @@ export class GameEngine {
     }
   }
 
-  private updateObstacles(dt: number): void {
+  private updateObstacles(dt: number, effectiveSpeed?: number): void {
+    const speed = effectiveSpeed || this.gameState.speed
     const slowFactor = 1 - (this.buffs['slow_obstacles'] || 0)
-    const obstacleSpeed = this.gameState.speed * Math.max(0.3, slowFactor)
+    const obstacleSpeed = speed * Math.max(0.3, slowFactor)
     
     this.obstacles = this.obstacles.filter(obs => {
       if (!obs.active) return false
@@ -491,12 +543,94 @@ export class GameEngine {
     })
   }
 
-  private updateCollectibles(dt: number): void {
+  private updateCollectibles(dt: number, effectiveSpeed?: number): void {
+    const speed = effectiveSpeed || this.gameState.speed
     this.collectibles = this.collectibles.filter(col => {
       if (!col.active || col.collected) return false
-      col.x -= this.gameState.speed * dt
+      col.x -= speed * dt
       return col.x + col.width > -50
     })
+  }
+
+  private checkStoryEventTrigger(): void {
+    const currentDistance = this.gameState.distance
+    if (currentDistance - this.lastStoryCheckDistance < this.STORY_CHECK_INTERVAL) {
+      return
+    }
+    this.lastStoryCheckDistance = currentDistance
+
+    const triggeredEvent = triggerStoryCheck(currentDistance, this.currentTheme)
+    if (triggeredEvent) {
+      const activeEvent = startStoryEvent(triggeredEvent)
+      if (this.onStoryEventTrigger) {
+        this.onStoryEventTrigger(triggeredEvent, activeEvent)
+      }
+    }
+  }
+
+  private processStoryQueues(): void {
+    const pendingEffects = processPendingEffects()
+    for (const { effects, source } of pendingEffects) {
+      this.applyStoryEffects(effects, source)
+    }
+
+    const pendingRewards = processPendingRewards()
+    for (const reward of pendingRewards) {
+      this.applyStoryReward(reward)
+    }
+  }
+
+  private applyStoryEffects(effects: StoryEffect[], source: string): void {
+    for (const effect of effects) {
+      addActiveEffect(effect.type, effect.value, effect.duration, source)
+
+      if (effect.type === 'invincible' && effect.duration) {
+        const invincibleBonus = this.buffs['invincible_duration'] || 0
+        this.player.isInvincible = true
+        this.player.invincibleTimer = Math.max(this.player.invincibleTimer, effect.duration + invincibleBonus)
+        this.createCollectParticles(
+          this.player.x + this.player.width / 2,
+          this.player.y + this.player.height / 2,
+          '#9932CC'
+        )
+      }
+    }
+  }
+
+  private applyStoryReward(reward: StoryReward): void {
+    if (reward.coins && reward.coins > 0) {
+      this.gameState.coins += reward.coins
+      this.createCollectParticles(
+        this.player.x + this.player.width / 2,
+        this.player.y,
+        '#FFD700'
+      )
+    }
+    if (reward.score && reward.score > 0) {
+      this.gameState.score += reward.score
+    }
+    if (reward.resources) {
+      for (const [type, amount] of Object.entries(reward.resources)) {
+        const resourceType = type as ResourceType
+        this.collectedResources[resourceType] = 
+          (this.collectedResources[resourceType] || 0) + (amount || 0)
+        const color = RESOURCE_DROP_CONFIG[resourceType]?.color || '#888'
+        this.createCollectParticles(
+          this.player.x + this.player.width / 2,
+          this.player.y + this.player.height / 2,
+          color
+        )
+      }
+    }
+    if (reward.codexId) {
+      const entry = unlockCodexEntry(reward.codexId)
+      if (entry && this.onCodexUnlockCallback) {
+        this.onCodexUnlockCallback(entry)
+      }
+    }
+    if (this.onStoryRewardCallback) {
+      this.onStoryRewardCallback(reward)
+    }
   }
 
   private updateClouds(dt: number): void {
@@ -570,7 +704,7 @@ export class GameEngine {
   }
 
   private applyMagnetEffect(dt: number): void {
-    const magnetRange = this.buffs['magnet_range'] || 0
+    const magnetRange = (this.buffs['magnet_range'] || 0) + (getActiveEffectValue('buff_magnet') || 0) * 100
     if (magnetRange <= 0) return
 
     let sourceX: number
@@ -618,16 +752,19 @@ export class GameEngine {
   }
 
   private collectItem(col: Collectible): void {
-    const coinMultiplier = 1 + (this.buffs['coin_multiplier'] || 0)
+    const coinMultiplier = 1 + (this.buffs['coin_multiplier'] || 0) + getActiveEffectValue('coin_bonus')
     const invincibleBonus = this.buffs['invincible_duration'] || 0
+    const resourceMultiplier = 1 + getActiveEffectValue('resource_bonus')
+    const coinPenalty = getActiveEffectValue('coin_penalty')
+    const finalCoinMultiplier = Math.max(0, coinMultiplier - coinPenalty)
 
     if (col.type === 'coin') {
-      const coinValue = Math.floor(col.value * coinMultiplier)
+      const coinValue = Math.max(0, Math.floor(col.value * finalCoinMultiplier))
       this.gameState.coins += coinValue
       this.gameState.score += col.value * 10
       this.createCollectParticles(col.x + col.width / 2, col.y + col.height / 2, '#FFD700')
     } else if (col.type === 'star') {
-      const coinValue = Math.floor(col.value * coinMultiplier)
+      const coinValue = Math.max(0, Math.floor(col.value * finalCoinMultiplier))
       this.gameState.coins += coinValue
       this.gameState.score += col.value * 20
       this.createCollectParticles(col.x + col.width / 2, col.y + col.height / 2, '#FFFF00')
@@ -637,7 +774,8 @@ export class GameEngine {
       this.createCollectParticles(col.x + col.width / 2, col.y + col.height / 2, '#9932CC')
     } else {
       const resourceType = col.type as ResourceType
-      this.collectedResources[resourceType] = (this.collectedResources[resourceType] || 0) + col.value
+      const resourceValue = Math.max(1, Math.floor(col.value * resourceMultiplier))
+      this.collectedResources[resourceType] = (this.collectedResources[resourceType] || 0) + resourceValue
       const color = RESOURCE_DROP_CONFIG[resourceType]?.color || '#888'
       this.gameState.score += col.value * 5
       this.createCollectParticles(col.x + col.width / 2, col.y + col.height / 2, color)
@@ -750,6 +888,8 @@ export class GameEngine {
   }
 
   reset(): void {
+    clearActiveEffectsForNewRun()
+    this.lastStoryCheckDistance = 0
     this.player = this.createPlayer()
     this.followPet = this.createFollowPet()
     this.obstacles = []

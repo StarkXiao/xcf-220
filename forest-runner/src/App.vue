@@ -14,6 +14,7 @@ import CheckInModal from './components/CheckInModal.vue'
 import CheckInFloat from './components/CheckInFloat.vue'
 import RankingScreen from './components/RankingScreen.vue'
 import ChallengeSettlement from './components/ChallengeSettlement.vue'
+import CodexScreen from './components/CodexScreen.vue'
 import { loadAchievements } from './game/achievements'
 import { addRunRewards } from './game/campStore'
 import type { Achievement, ResourceType, ChapterRunResult, CheckInReward } from './game/types'
@@ -24,7 +25,7 @@ import { checkCosmeticUnlocks } from './game/cosmeticStore'
 import { hasUnclaimedRewards as hasCheckInUnclaimed } from './game/checkInStore'
 import { uploadScore, getUnclaimedChallengeCount } from './game/rankingStore'
 
-type GameScreen = 'home' | 'game' | 'achievements' | 'camp' | 'map' | 'chapterSettlement' | 'pet' | 'battlePass' | 'shop' | 'cosmetic' | 'ranking' | 'challengeSettlement'
+type GameScreen = 'home' | 'game' | 'achievements' | 'camp' | 'map' | 'chapterSettlement' | 'pet' | 'battlePass' | 'shop' | 'cosmetic' | 'ranking' | 'challengeSettlement' | 'codex'
 
 const currentScreen = ref<GameScreen>('home')
 const highScore = ref(0)
@@ -105,6 +106,10 @@ function showRanking() {
 
 function showChallengeSettlement() {
   currentScreen.value = 'challengeSettlement'
+}
+
+function showCodex() {
+  currentScreen.value = 'codex'
 }
 
 function goHome() {
@@ -196,6 +201,7 @@ onMounted(() => {
       @show-cosmetic="showCosmetic"
       @show-check-in="openCheckInModal"
       @show-ranking="showRanking"
+      @show-codex="showCodex"
     />
 
     <CheckInFloat
@@ -284,6 +290,11 @@ onMounted(() => {
       @back="goHome"
       @back-to-ranking="showRanking"
       @start-game="startGame"
+    />
+
+    <CodexScreen
+      v-else-if="currentScreen === 'codex'"
+      @back="goHome"
     />
   </div>
 </template>
