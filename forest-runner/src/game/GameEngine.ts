@@ -9,10 +9,18 @@ const JUMP_FORCE = -14
 const DOUBLE_JUMP_FORCE = -12
 const PLAYER_WIDTH = 50
 const PLAYER_HEIGHT = 70
-const BASE_SPEED = 5
-const MAX_SPEED = 15
-const SPEED_INCREMENT = 0.001
+const BASE_SPEED = 6
+const MAX_SPEED = 14
+const SPEED_INCREMENT = 0.003
 const HIGH_SCORE_KEY = 'forest-runner-highscore'
+
+const OBSTACLE_MIN_INTERVAL = 45
+const OBSTACLE_MAX_INTERVAL = 90
+const COLLECTIBLE_INTERVAL = 35
+const INITIAL_OBSTACLE_COUNT = 3
+const INITIAL_COLLECTIBLE_COUNT = 8
+const OBSTACLE_SPAWN_START_DISTANCE = 900
+const INITIAL_CLEAR_DISTANCE = 200
 
 export class GameEngine {
   private canvas: HTMLCanvasElement
@@ -308,14 +316,19 @@ export class GameEngine {
     this.groundOffset += this.gameState.speed * dt
 
     this.obstacleTimer += dt
-    if (this.obstacleTimer > 100 / this.gameState.speed * 60) {
+    const speedFactor = BASE_SPEED / this.gameState.speed
+    const minInterval = OBSTACLE_MIN_INTERVAL * speedFactor
+    const maxInterval = OBSTACLE_MAX_INTERVAL * speedFactor
+    const obstacleInterval = randomRange(minInterval, maxInterval)
+    
+    if (this.obstacleTimer > obstacleInterval) {
       this.spawnObstacle()
       this.obstacleTimer = 0
     }
 
     this.collectibleTimer += dt
-    if (this.collectibleTimer > 80) {
-      if (Math.random() < 0.7) {
+    if (this.collectibleTimer > COLLECTIBLE_INTERVAL) {
+      if (Math.random() < 0.85) {
         this.spawnCollectible()
       }
       this.collectibleTimer = 0
@@ -498,11 +511,82 @@ export class GameEngine {
     this.collectibles = []
     this.particles = []
     this.groundOffset = 0
-    this.obstacleTimer = 0
-    this.collectibleTimer = 0
+    this.obstacleTimer = OBSTACLE_MIN_INTERVAL * 0.5
+    this.collectibleTimer = 15
     this.cloudTimer = 0
     this.gameState = this.createInitialState()
     this.achievements = loadAchievements()
+    
+    this.spawnInitialContent()
+  }
+
+  private spawnInitialContent(): void {
+    const groundY = this.height * 0.75
+    
+    for (let i = 0; i < INITIAL_COLLECTIBLE_COUNT; i++) {
+      const x = this.width + INITIAL_CLEAR_DISTANCE + i * 120
+      const y = randomRange(groundY - 140, groundY - 50)
+      const types: Collectible['type'][] = ['coin', 'coin', 'coin', 'coin', 'coin', 'star', 'potion']
+      const type = types[randomInt(0, types.length - 1)]
+      
+      this.collectibles.push({
+        type,
+        x,
+        y,
+        width: type === 'coin' ? 30 : 35,
+        height: type === 'coin' ? 30 : 35,
+        speed: this.gameState.speed,
+        active: true,
+        value: type === 'coin' ? 1 : type === 'star' ? 10 : 0,
+        collected: false
+      })
+    }
+    
+    for (let i = 0; i < INITIAL_OBSTACLE_COUNT; i++) {
+      const x = this.width + OBSTACLE_SPAWN_START_DISTANCE + i * randomRange(250, 400)
+      this.spawnObstacleAt(x)
+    }
+  }
+
+  private spawnObstacleAt(x: number): void {
+    const types: Obstacle['type'][] = ['tree', 'rock', 'mushroom', 'log']
+    const type = types[randomInt(0, types.length - 1)]
+    
+    let width: number
+    let height: number
+
+    switch (type) {
+      case 'tree':
+        width = randomRange(40, 60)
+        height = randomRange(70, 100)
+        break
+      case 'rock':
+        width = randomRange(50, 70)
+        height = randomRange(35, 50)
+        break
+      case 'mushroom':
+        width = randomRange(35, 50)
+        height = randomRange(45, 60)
+        break
+      case 'log':
+        width = randomRange(60, 80)
+        height = randomRange(25, 40)
+        break
+      default:
+        width = 50
+        height = 50
+    }
+
+    const groundY = this.height * 0.75
+    this.obstacles.push({
+      type,
+      x,
+      y: groundY - height,
+      width,
+      height,
+      speed: this.gameState.speed,
+      active: true
+    })
   }
 
   pause(): void {
