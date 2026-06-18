@@ -18,7 +18,7 @@ import {
   getExpForLevel,
   getPetSkillValue
 } from './petData'
-import { hasResources, consumeResources } from './campStore'
+import { hasResources, consumeResources, getCombinedBuffs } from './campStore'
 
 const STORAGE_KEY = 'forest-runner-pet-state'
 
@@ -293,17 +293,31 @@ export function calculatePetRunContribution(
   
   if (!petInfo || !petInstance) return null
 
-  const coinBonus = getEquippedPetSkillValue('coin_bonus')
-  const scoreBonus = getEquippedPetSkillValue('score_multiplier')
-  const resourceBonus = getEquippedPetSkillValue('resource_bonus')
+  const campBuffs = getCombinedBuffs()
 
-  const bonusCoins = Math.floor(baseCoins * coinBonus)
-  const bonusScore = Math.floor(baseScore * scoreBonus)
-  
+  const petCoinBonus = getEquippedPetSkillValue('coin_bonus')
+  const campCoinBonus = campBuffs['coin_multiplier'] || 0
+  const totalCoinMultiplier = 1 + campCoinBonus + petCoinBonus
+  const bonusCoins = totalCoinMultiplier > 1
+    ? Math.floor(baseCoins * petCoinBonus / totalCoinMultiplier)
+    : 0
+
+  const petScoreBonus = getEquippedPetSkillValue('score_multiplier')
+  const campScoreBonus = campBuffs['score_multiplier'] || 0
+  const totalScoreMultiplier = 1 + campScoreBonus + petScoreBonus
+  const bonusScore = totalScoreMultiplier > 1
+    ? Math.floor(baseScore * petScoreBonus / totalScoreMultiplier)
+    : 0
+
+  const petResourceBonus = getEquippedPetSkillValue('resource_bonus')
+  const campResourceBonus = campBuffs['resource_boost'] || 0
+  const totalResourceMultiplier = 1 + campResourceBonus + petResourceBonus
   const bonusResources: Partial<Record<ResourceType, number>> = {}
   for (const [type, amount] of Object.entries(baseResources)) {
     if (amount) {
-      bonusResources[type as ResourceType] = Math.floor(amount * resourceBonus)
+      bonusResources[type as ResourceType] = totalResourceMultiplier > 1
+        ? Math.floor(amount * petResourceBonus / totalResourceMultiplier)
+        : 0
     }
   }
 
