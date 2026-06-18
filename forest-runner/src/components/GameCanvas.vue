@@ -15,6 +15,7 @@ const emit = defineEmits<{
   (e: 'goHome'): void
   (e: 'goCamp'): void
   (e: 'goMap'): void
+  (e: 'playerJump'): void
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -51,6 +52,10 @@ function handleAchievement(achievement: Achievement) {
   setTimeout(() => {
     achievementToast.value = null
   }, 3000)
+}
+
+function handlePlayerJump() {
+  emit('playerJump')
 }
 
 function restartGame() {
@@ -93,6 +98,7 @@ onMounted(() => {
     gameEngine.value = new GameEngine(canvasRef.value)
     gameEngine.value.onGameOver(handleGameOver)
     gameEngine.value.onAchievement(handleAchievement)
+    gameEngine.value.onPlayerJump(handlePlayerJump)
     highScore.value = gameEngine.value.getHighScore()
   }
 })

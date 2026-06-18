@@ -7,18 +7,22 @@ import CampScreen from './components/CampScreen.vue'
 import MapScreen from './components/MapScreen.vue'
 import ChapterSettlement from './components/ChapterSettlement.vue'
 import PetScreen from './components/PetScreen.vue'
+import BattlePassScreen from './components/BattlePassScreen.vue'
 import { loadAchievements } from './game/achievements'
 import { addRunRewards } from './game/campStore'
 import type { Achievement, ResourceType, ChapterRunResult } from './game/types'
 import { completeRun, getCurrentArea } from './game/chapterStore'
+import { recordRunStats, checkAndResetDailyTasks, hasAnyUnclaimed } from './game/battlePassStore'
 
-type GameScreen = 'home' | 'game' | 'achievements' | 'camp' | 'map' | 'chapterSettlement' | 'pet'
+type GameScreen = 'home' | 'game' | 'achievements' | 'camp' | 'map' | 'chapterSettlement' | 'pet' | 'battlePass'
 
 const currentScreen = ref<GameScreen>('home')
 const highScore = ref(0)
 const achievements = ref<Achievement[]>([])
 const isPlaying = ref(false)
 const chapterRunResult = ref<ChapterRunResult | null>(null)
+const jumpCount = ref(0)
+const hasUnclaimedBadge = ref(false)
 
 function loadHighScore() {
   try {
@@ -29,8 +33,13 @@ function loadHighScore() {
   }
 }
 
+function refreshUnclaimedBadge() {
+  hasUnclaimedBadge.value = hasAnyUnclaimed()
+}
+
 function startGame() {
   isPlaying.value = false
+  jumpCount.value = 0
   currentScreen.value = 'game'
   setTimeout(() => {
     isPlaying.value = true
@@ -54,11 +63,17 @@ function showPets() {
   currentScreen.value = 'pet'
 }
 
+function showBattlePass() {
+  checkAndResetDailyTasks()
+  currentScreen.value = 'battlePass'
+}
+
 function goHome() {
   currentScreen.value = 'home'
   isPlaying.value = false
   loadHighScore()
   chapterRunResult.value = null
+  refreshUnclaimedBadge()
 }
 
 function handleGameOver(
@@ -72,16 +87,22 @@ function handleGameOver(
   }
   addRunRewards(coins, resources)
 
+  const isChapterRun = !!getCurrentArea()
+  recordRunStats(_distance, coins, 0, jumpCount.value, isChapterRun)
+
   const area = getCurrentArea()
   if (area) {
     const result = completeRun(score, coins, _distance, resources)
     if (result) {
+      recordRunStats(_distance, coins, result.starsEarned, jumpCount.value, true)
       chapterRunResult.value = result
       currentScreen.value = 'chapterSettlement'
       isPlaying.value = false
+      refreshUnclaimedBadge()
       return
     }
   }
+  refreshUnclaimedBadge()
 }
 
 function handleAchievement(achievement: Achievement) {
@@ -111,9 +132,15 @@ function handleSettlementBackToMap() {
   currentScreen.value = 'map'
 }
 
+function handlePlayerJump() {
+  jumpCount.value++
+}
+
 onMounted(() => {
   loadHighScore()
   achievements.value = loadAchievements()
+  checkAndResetDailyTasks()
+  refreshUnclaimedBadge()
 })
 </script>
 
@@ -122,10 +149,12 @@ onMounted(() => {
     <HomeScreen
       v-if="currentScreen === 'home'"
       :high-score="highScore"
+      :has-unclaimed="hasUnclaimedBadge"
       @start="startGame"
       @show-achievements="showAchievements"
       @show-camp="showCamp"
       @show-map="showMap"
+      @show-battle-pass="showBattlePass"
     />
     
     <GameCanvas
@@ -136,6 +165,7 @@ onMounted(() => {
       @go-home="goHome"
       @go-camp="handleGoCampFromGame"
       @go-map="showMap"
+      @player-jump="handlePlayerJump"
     />
     
     <AchievementsScreen
@@ -162,6 +192,11 @@ onMounted(() => {
       v-else-if="currentScreen === 'pet'"
       @back="showCamp"
       @start-game="startGame"
+    />
+
+    <BattlePassScreen
+      v-else-if="currentScreen === 'battlePass'"
+      @back="goHome"
     />
 
     <ChapterSettlement

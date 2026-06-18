@@ -1,4 +1,4 @@
-import type { Player, Obstacle, Collectible, Cloud, Particle, ResourceType, ThemeConfig, FollowPet, Pet } from './types'
+import type { Player, Obstacle, Collectible, Cloud, Particle, ResourceType, ThemeConfig, FollowPet, Pet, SkinColorConfig } from './types'
 
 const COLORS = {
   skyTop: '#87CEEB',
@@ -31,12 +31,17 @@ export class GameRenderer {
   private width: number
   private height: number
   private groundY: number
+  private skinColors: SkinColorConfig | null = null
 
   constructor(ctx: CanvasRenderingContext2D, width: number, height: number) {
     this.ctx = ctx
     this.width = width
     this.height = height
     this.groundY = height * 0.75
+  }
+
+  setSkinColors(colors: SkinColorConfig | null): void {
+    this.skinColors = colors
   }
 
   resize(width: number, height: number): void {
@@ -185,8 +190,10 @@ export class GameRenderer {
       this.ctx.globalAlpha = 0.5
     }
 
-    const bodyColor = COLORS.player
-    const accentColor = COLORS.playerAccent
+    const bodyColor = this.skinColors?.body || COLORS.player
+    const accentColor = this.skinColors?.hat || COLORS.playerAccent
+    const skinTone = this.skinColors?.skin || '#FFE4C4'
+    const shoeColor = this.skinColors?.shoes || '#8B4513'
 
     const cx = x + width / 2
     const cy = y + height / 2
@@ -196,7 +203,7 @@ export class GameRenderer {
     this.ctx.ellipse(cx, cy + 5, width / 2 - 5, height / 2 - 10, 0, 0, Math.PI * 2)
     this.ctx.fill()
 
-    this.ctx.fillStyle = '#FFE4C4'
+    this.ctx.fillStyle = skinTone
     this.ctx.beginPath()
     this.ctx.arc(cx, cy - height / 4, width / 3, 0, Math.PI * 2)
     this.ctx.fill()
@@ -230,7 +237,7 @@ export class GameRenderer {
     this.ctx.fillRect(cx - 12, y + height - 15, 8, 15 + (player.isJumping ? -5 : legOffset))
     this.ctx.fillRect(cx + 4, y + height - 15, 8, 15 + (player.isJumping ? -5 : -legOffset))
 
-    this.ctx.fillStyle = '#8B4513'
+    this.ctx.fillStyle = shoeColor
     this.ctx.fillRect(cx - 14, y + height - 5 + (player.isJumping ? -5 : legOffset), 12, 5)
     this.ctx.fillRect(cx + 2, y + height - 5 + (player.isJumping ? -5 : -legOffset), 12, 5)
 

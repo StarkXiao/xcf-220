@@ -335,3 +335,97 @@ export interface PetRunContribution {
   bonusScore: number
   skillsActivated: string[]
 }
+
+export type DailyTaskType = 'run_distance' | 'collect_coins' | 'collect_stars' | 'complete_chapter' | 'play_games' | 'jump_count'
+
+export interface DailyTask {
+  id: string
+  type: DailyTaskType
+  name: string
+  description: string
+  icon: string
+  target: number
+  rewardPoints: number
+  progress: number
+  completed: boolean
+  claimed: boolean
+}
+
+export type RewardType = 'coin' | 'resource' | 'skin' | 'pet_egg' | 'title' | 'emote'
+
+export interface BattlePassReward {
+  id: string
+  level: number
+  isPremium: boolean
+  type: RewardType
+  name: string
+  icon: string
+  amount?: number
+  resourceType?: AllResourceType
+  skinId?: string
+  petEggId?: string
+  title?: string
+}
+
+export interface SkinColorConfig {
+  body: string
+  head: string
+  hat: string
+  accent: string
+  skin: string
+  shoes: string
+}
+
+export interface Skin {
+  id: string
+  name: string
+  description: string
+  icon: string
+  rarity: 'common' | 'rare' | 'epic' | 'legendary'
+  colors: SkinColorConfig
+  unlocked: boolean
+  unlockCondition: string
+  isEquipped: boolean
+}
+
+export interface BattlePassSeason {
+  id: string
+  name: string
+  description: string
+  icon: string
+  theme: string
+  startDate: number
+  endDate: number
+  maxLevel: number
+  pointsPerLevel: number
+  premiumPrice: number
+}
+
+export interface BattlePassState {
+  currentSeasonId: string
+  points: number
+  level: number
+  premiumUnlocked: boolean
+  claimedFreeRewards: string[]
+  claimedPremiumRewards: string[]
+  dailyTasks: DailyTask[]
+  lastDailyReset: number
+  totalPointsEarned: number
+  gamesPlayed: number
+  totalDistance: number
+  totalCoins: number
+  totalStars: number
+  totalJumps: number
+  unlockedSkins: string[]
+  equippedSkinId: string | null
+  unlockedTitles: string[]
+  equippedTitle: string | null
+}
+
+export interface SkinRunStats {
+  skinId: string
+  runs: number
+  totalScore: number
+  bestScore: number
+  totalDistance: number
+}

@@ -4,16 +4,30 @@ defineEmits<{
   (e: 'showAchievements'): void
   (e: 'showCamp'): void
   (e: 'showMap'): void
+  (e: 'showBattlePass'): void
 }>()
 
 defineProps<{
   highScore: number
+  hasUnclaimed?: boolean
 }>()
 </script>
 
 <template>
   <div class="home-screen">
     <div class="home-content">
+      <div class="battle-pass-entry" @click="$emit('showBattlePass')">
+        <div class="bp-entry-icon">🎫</div>
+        <div class="bp-entry-info">
+          <div class="bp-entry-title">森林奇遇赛季</div>
+          <div class="bp-entry-subtitle">完成任务赢取皮肤奖励</div>
+        </div>
+        <div class="bp-entry-arrow">
+          <span v-if="hasUnclaimed" class="bp-entry-badge">!</span>
+          <span class="arrow-icon">›</span>
+        </div>
+      </div>
+
       <div class="title-section">
         <h1 class="game-title">
           <span class="title-icon">🌲</span>
@@ -112,6 +126,118 @@ defineProps<{
   z-index: 10;
   text-align: center;
   padding: 20px;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.battle-pass-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 18px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(102,126,234,0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.battle-pass-entry::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.6s;
+}
+
+.battle-pass-entry:hover::before {
+  left: 100%;
+}
+
+.battle-pass-entry:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(102,126,234,0.5);
+}
+
+.battle-pass-entry:active {
+  transform: translateY(-1px);
+}
+
+.bp-entry-icon {
+  font-size: 34px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  animation: ticketBounce 2s ease-in-out infinite;
+}
+
+@keyframes ticketBounce {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+
+.bp-entry-info {
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+}
+
+.bp-entry-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  margin-bottom: 2px;
+}
+
+.bp-entry-subtitle {
+  font-size: 12px;
+  color: rgba(255,255,255,0.85);
+  font-weight: 500;
+}
+
+.bp-entry-arrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.bp-entry-badge {
+  width: 22px;
+  height: 22px;
+  background: #FF4444;
+  border-radius: 50%;
+  color: white;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(255,68,68,0.5);
+  animation: badgePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(255,68,68,0.5); }
+  50% { transform: scale(1.15); box-shadow: 0 4px 14px rgba(255,68,68,0.7); }
+}
+
+.arrow-icon {
+  font-size: 26px;
+  font-weight: 700;
+  color: white;
+  opacity: 0.9;
+  transition: transform 0.2s;
+}
+
+.battle-pass-entry:hover .arrow-icon {
+  transform: translateX(4px);
 }
 
 .title-section {

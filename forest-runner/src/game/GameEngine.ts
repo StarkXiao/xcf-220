@@ -23,6 +23,8 @@ import {
   getEquippedPetInfo,
   addRunExpToPet
 } from './petStore'
+import { getEquippedSkinColors } from './battlePassStore'
+import type { SkinColorConfig } from './types'
 
 const GRAVITY = 0.6
 const BASE_JUMP_FORCE = -14
@@ -101,6 +103,8 @@ export class GameEngine {
     resources: Partial<Record<ResourceType, number>>
   ) => void
   private onAchievementUnlock?: (achievement: Achievement) => void
+  private playerJumpCallback?: () => void
+  private skinColors: SkinColorConfig | null = null
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -235,12 +239,18 @@ export class GameEngine {
       this.player.isJumping = true
       this.player.jumpCount = 1
       this.createJumpParticles()
+      this.playerJumpCallback?.()
     } else if (this.player.jumpCount === 1) {
       this.player.velocityY = BASE_DOUBLE_JUMP_FORCE * jumpBoost
       this.player.isDoubleJumping = true
       this.player.jumpCount = 2
       this.createJumpParticles()
+      this.playerJumpCallback?.()
     }
+  }
+
+  onPlayerJump(callback: () => void): void {
+    this.playerJumpCallback = callback
   }
 
   private createJumpParticles(): void {
@@ -662,6 +672,8 @@ export class GameEngine {
     this.applyBuffs()
     this.setupChapterContext()
     this.reset()
+    this.skinColors = getEquippedSkinColors()
+    this.renderer.setSkinColors(this.skinColors)
     this.gameState.isRunning = true
     this.gameState.isGameOver = false
     this.lastTime = 0
