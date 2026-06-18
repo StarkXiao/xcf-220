@@ -21,7 +21,6 @@ const highScore = ref(0)
 const achievements = ref<Achievement[]>([])
 const isPlaying = ref(false)
 const chapterRunResult = ref<ChapterRunResult | null>(null)
-const jumpCount = ref(0)
 const hasUnclaimedBadge = ref(false)
 
 function loadHighScore() {
@@ -39,7 +38,6 @@ function refreshUnclaimedBadge() {
 
 function startGame() {
   isPlaying.value = false
-  jumpCount.value = 0
   currentScreen.value = 'game'
   setTimeout(() => {
     isPlaying.value = true
@@ -80,21 +78,19 @@ function handleGameOver(
   score: number,
   coins: number,
   _distance: number,
-  resources: Partial<Record<ResourceType, number>>
+  resources: Partial<Record<ResourceType, number>>,
+  jumps: number
 ) {
   if (score > highScore.value) {
     highScore.value = score
   }
   addRunRewards(coins, resources)
 
-  const isChapterRun = !!getCurrentArea()
-  recordRunStats(_distance, coins, 0, jumpCount.value, isChapterRun)
-
   const area = getCurrentArea()
   if (area) {
     const result = completeRun(score, coins, _distance, resources)
     if (result) {
-      recordRunStats(_distance, coins, result.starsEarned, jumpCount.value, true)
+      recordRunStats(_distance, coins, result.starsEarned, jumps, true)
       chapterRunResult.value = result
       currentScreen.value = 'chapterSettlement'
       isPlaying.value = false
@@ -102,6 +98,8 @@ function handleGameOver(
       return
     }
   }
+
+  recordRunStats(_distance, coins, 0, jumps, false)
   refreshUnclaimedBadge()
 }
 
@@ -130,10 +128,6 @@ function handleSettlementRestart() {
 function handleSettlementBackToMap() {
   chapterRunResult.value = null
   currentScreen.value = 'map'
-}
-
-function handlePlayerJump() {
-  jumpCount.value++
 }
 
 onMounted(() => {
@@ -165,7 +159,6 @@ onMounted(() => {
       @go-home="goHome"
       @go-camp="handleGoCampFromGame"
       @go-map="showMap"
-      @player-jump="handlePlayerJump"
     />
     
     <AchievementsScreen

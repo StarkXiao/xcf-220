@@ -10,12 +10,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'gameOver', score: number, coins: number, distance: number, resources: Partial<Record<ResourceType, number>>): void
+  (e: 'gameOver', score: number, coins: number, distance: number, resources: Partial<Record<ResourceType, number>>, jumps: number): void
   (e: 'achievement', achievement: Achievement): void
   (e: 'goHome'): void
   (e: 'goCamp'): void
   (e: 'goMap'): void
-  (e: 'playerJump'): void
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -29,10 +28,11 @@ const highScore = ref(0)
 const isNewRecord = ref(false)
 const achievementToast = ref<Achievement | null>(null)
 const inChapterMode = ref(false)
+const jumpCount = ref(0)
 
 function handleGameOver(score: number, coins: number, distance: number, resources: Partial<Record<ResourceType, number>>) {
   if (inChapterMode.value) {
-    emit('gameOver', score, coins, distance, resources)
+    emit('gameOver', score, coins, distance, resources, jumpCount.value)
     return
   }
   isGameOver.value = true
@@ -42,7 +42,7 @@ function handleGameOver(score: number, coins: number, distance: number, resource
   collectedResources.value = resources
   isNewRecord.value = score > highScore.value
   highScore.value = gameEngine.value?.getHighScore() || 0
-  emit('gameOver', score, coins, distance, resources)
+  emit('gameOver', score, coins, distance, resources, jumpCount.value)
 }
 
 function handleAchievement(achievement: Achievement) {
@@ -55,12 +55,13 @@ function handleAchievement(achievement: Achievement) {
 }
 
 function handlePlayerJump() {
-  emit('playerJump')
+  jumpCount.value++
 }
 
 function restartGame() {
   isGameOver.value = false
   isNewRecord.value = false
+  jumpCount.value = 0
   gameEngine.value?.start()
 }
 
@@ -89,6 +90,7 @@ watch(() => props.isPlaying, (playing) => {
   if (playing && gameEngine.value) {
     isGameOver.value = false
     inChapterMode.value = !!getCurrentArea()
+    jumpCount.value = 0
     gameEngine.value.start()
   }
 })
