@@ -305,6 +305,7 @@ export function purchasePremium(): boolean {
   if (!consumeResources(cost)) return false
   
   battlePassState.premiumUnlocked = true
+  checkCosmeticUnlocks()
   return true
 }
 

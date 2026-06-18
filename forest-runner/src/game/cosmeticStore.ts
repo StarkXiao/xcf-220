@@ -69,6 +69,7 @@ function loadState(): CosmeticState {
         }
       })
 
+      revalidateUnlocks(state)
       checkAllUnlocks(state)
 
       return state
@@ -113,10 +114,16 @@ function checkUnlockCondition(item: CosmeticItem): boolean {
       return achievement?.unlocked || false
     }
 
-    case 'chapter': {
+    case 'chapter_complete': {
       const chapterId = condition.value as string
       const chapter = chapterState.chapters.find(c => c.id === chapterId)
       return chapter?.completed || false
+    }
+
+    case 'chapter_unlock': {
+      const chapterId = condition.value as string
+      const chapter = chapterState.chapters.find(c => c.id === chapterId)
+      return chapter?.unlocked || false
     }
 
     case 'battle_pass': {
@@ -126,10 +133,8 @@ function checkUnlockCondition(item: CosmeticItem): boolean {
 
       if (battlePassState.level < level) return false
 
-      if (tier === 'premium' && !battlePassState.premiumUnlocked) return true
-      if (tier === 'free') return true
-
-      return false
+      if (tier === 'premium' && !battlePassState.premiumUnlocked) return false
+      return true
     }
 
     case 'stars': {
@@ -151,6 +156,28 @@ function checkUnlockCondition(item: CosmeticItem): boolean {
     default:
       return false
   }
+}
+
+function revalidateUnlocks(state: CosmeticState): void {
+  state.cosmetics.forEach(c => {
+    if (!c.unlocked) return
+
+    const item = getCosmeticById(c.cosmeticId)
+    if (!item) return
+
+    if (item.unlockCondition.type === 'default') return
+
+    if (!checkUnlockCondition(item)) {
+      c.unlocked = false
+      c.unlockedAt = undefined
+      c.equipped = false
+
+      const category = item.category
+      if (state.equipped[category] === c.cosmeticId) {
+        state.equipped[category] = null
+      }
+    }
+  })
 }
 
 function checkAllUnlocks(state: CosmeticState): string[] {

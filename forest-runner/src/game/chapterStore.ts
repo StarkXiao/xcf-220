@@ -122,6 +122,8 @@ watch(
 )
 
 function checkChapterUnlocks(state: ChapterState): void {
+  let anyNewlyUnlocked = false
+
   for (let i = 0; i < state.chapters.length; i++) {
     const chapter = state.chapters[i]
     if (chapter.unlocked) continue
@@ -129,6 +131,7 @@ function checkChapterUnlocks(state: ChapterState): void {
     const condition = chapter.unlockedCondition
     if (!condition) {
       chapter.unlocked = true
+      anyNewlyUnlocked = true
       continue
     }
 
@@ -158,7 +161,12 @@ function checkChapterUnlocks(state: ChapterState): void {
 
     if (canUnlock) {
       chapter.unlocked = true
+      anyNewlyUnlocked = true
     }
+  }
+
+  if (anyNewlyUnlocked) {
+    checkCosmeticUnlocks()
   }
 }
 

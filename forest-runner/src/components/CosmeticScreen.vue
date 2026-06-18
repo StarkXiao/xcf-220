@@ -138,7 +138,8 @@ function getUnlockIcon(type: string): string {
   const icons: Record<string, string> = {
     default: '🎁',
     achievement: '🏆',
-    chapter: '🗺️',
+    chapter_complete: '🗺️',
+    chapter_unlock: '🔓',
     battle_pass: '📜',
     shop: '🛒',
     event: '🎉',

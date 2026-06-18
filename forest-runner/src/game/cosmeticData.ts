@@ -198,7 +198,7 @@ export const COSMETIC_ITEMS: CosmeticItem[] = [
     category: 'hat',
     rarity: 'epic',
     colors: { body: '#FF6B6B', head: '#FFE4C4', hat: '#78909C', accent: '#FFC107', skin: '#FFE4C4', shoes: '#8B4513' },
-    unlockCondition: { type: 'chapter', value: 'chapter-volcano', description: '解锁火山章节' },
+    unlockCondition: { type: 'chapter_unlock', value: 'chapter-volcano', description: '解锁火山章节' },
     sortOrder: 6
   },
   {
@@ -251,7 +251,7 @@ export const COSMETIC_ITEMS: CosmeticItem[] = [
     icon: '📿',
     category: 'accessory',
     rarity: 'epic',
-    unlockCondition: { type: 'chapter', value: 'chapter-ocean', description: '解锁海洋章节' },
+    unlockCondition: { type: 'chapter_unlock', value: 'chapter-ocean', description: '解锁海洋章节' },
     sortOrder: 4
   },
   {
@@ -343,7 +343,7 @@ export const COSMETIC_ITEMS: CosmeticItem[] = [
     rarity: 'rare',
     trailColor: '#4CAF50',
     particleColor: '#8BC34A',
-    unlockCondition: { type: 'chapter', value: 'chapter-forest', description: '完成森林章节' },
+    unlockCondition: { type: 'chapter_complete', value: 'chapter-forest', description: '完成森林章节' },
     sortOrder: 6
   },
 
