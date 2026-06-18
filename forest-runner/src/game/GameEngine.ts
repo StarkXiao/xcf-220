@@ -407,6 +407,7 @@ export class GameEngine {
 
     this.updatePlayer(dt)
     this.updateFollowPet(dt)
+    this.applyMagnetEffect(dt)
     this.updateObstacles(dt)
     this.updateCollectibles(dt)
     this.updateClouds(dt)
@@ -534,19 +535,32 @@ export class GameEngine {
       this.followPet.animFrame++
       this.followPet.animTimer = 0
     }
+  }
 
+  private applyMagnetEffect(dt: number): void {
     const magnetRange = this.buffs['magnet_range'] || 0
-    if (magnetRange > 0) {
-      for (const col of this.collectibles) {
-        if (!col.active || col.collected) continue
-        const dx = (this.followPet.x + this.followPet.width / 2) - (col.x + col.width / 2)
-        const dy = (this.followPet.y + this.followPet.height / 2) - (col.y + col.height / 2)
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        if (dist < magnetRange && dist > 0) {
-          const force = (magnetRange - dist) / magnetRange * 2
-          col.x += (dx / dist) * force * dt
-          col.y += (dy / dist) * force * dt
-        }
+    if (magnetRange <= 0) return
+
+    let sourceX: number
+    let sourceY: number
+
+    if (this.followPet) {
+      sourceX = this.followPet.x + this.followPet.width / 2
+      sourceY = this.followPet.y + this.followPet.height / 2
+    } else {
+      sourceX = this.player.x + this.player.width / 2
+      sourceY = this.player.y + this.player.height / 2
+    }
+
+    for (const col of this.collectibles) {
+      if (!col.active || col.collected) continue
+      const dx = sourceX - (col.x + col.width / 2)
+      const dy = sourceY - (col.y + col.height / 2)
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      if (dist < magnetRange && dist > 0) {
+        const force = (magnetRange - dist) / magnetRange * 2
+        col.x += (dx / dist) * force * dt
+        col.y += (dy / dist) * force * dt
       }
     }
   }
