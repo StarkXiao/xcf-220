@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { GameEngine } from '../game/GameEngine'
 import type { Achievement, ResourceType } from '../game/types'
 import GameOverScreen from './GameOverScreen.vue'
+import { getCurrentArea } from '../game/chapterStore'
 
 const props = defineProps<{
   isPlaying: boolean
@@ -13,6 +14,7 @@ const emit = defineEmits<{
   (e: 'achievement', achievement: Achievement): void
   (e: 'goHome'): void
   (e: 'goCamp'): void
+  (e: 'goMap'): void
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -25,8 +27,13 @@ const collectedResources = ref<Partial<Record<ResourceType, number>>>({})
 const highScore = ref(0)
 const isNewRecord = ref(false)
 const achievementToast = ref<Achievement | null>(null)
+const inChapterMode = ref(false)
 
 function handleGameOver(score: number, coins: number, distance: number, resources: Partial<Record<ResourceType, number>>) {
+  if (inChapterMode.value) {
+    emit('gameOver', score, coins, distance, resources)
+    return
+  }
   isGameOver.value = true
   finalScore.value = score
   finalCoins.value = coins
@@ -66,9 +73,17 @@ function goCamp() {
   emit('goCamp')
 }
 
+function goMap() {
+  isGameOver.value = false
+  isNewRecord.value = false
+  gameEngine.value?.stop()
+  emit('goMap')
+}
+
 watch(() => props.isPlaying, (playing) => {
   if (playing && gameEngine.value) {
     isGameOver.value = false
+    inChapterMode.value = !!getCurrentArea()
     gameEngine.value.start()
   }
 })
@@ -100,7 +115,7 @@ onUnmounted(() => {
     </div>
 
     <GameOverScreen
-      v-if="isGameOver"
+      v-if="isGameOver && !inChapterMode"
       :score="finalScore"
       :coins="finalCoins"
       :distance="finalDistance"
@@ -110,6 +125,7 @@ onUnmounted(() => {
       @restart="restartGame"
       @home="goHome"
       @go-camp="goCamp"
+      @go-map="goMap"
     />
   </div>
 </template>

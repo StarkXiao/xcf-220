@@ -5,22 +5,26 @@ import type {
   Cloud,
   Particle,
   GameState,
-  ResourceType
+  ResourceType,
+  ChapterTheme,
+  AreaNode
 } from './types'
 import { GameRenderer } from './renderer'
 import { checkCollision, randomRange, randomInt } from './utils'
 import { checkAchievements, loadAchievements } from './achievements'
 import type { Achievement } from './types'
-import { selectRandomResource, RESOURCE_DROP_CONFIG } from './campData'
+import { RESOURCE_DROP_CONFIG } from './campData'
 import { getCombinedBuffs } from './campStore'
+import { THEMES, selectThemedObstacleType, DEFAULT_OBSTACLE_SIZES } from './chapterData'
+import { getCurrentArea } from './chapterStore'
 
 const GRAVITY = 0.6
 const BASE_JUMP_FORCE = -14
 const BASE_DOUBLE_JUMP_FORCE = -12
 const PLAYER_WIDTH = 50
 const PLAYER_HEIGHT = 70
-const BASE_SPEED = 6
-const BASE_MAX_SPEED = 14
+const DEFAULT_BASE_SPEED = 6
+const DEFAULT_MAX_SPEED = 14
 const SPEED_INCREMENT = 0.003
 const HIGH_SCORE_KEY = 'forest-runner-highscore'
 const BASE_INVINCIBLE_DURATION = 180
@@ -32,6 +36,25 @@ const INITIAL_OBSTACLE_COUNT = 3
 const INITIAL_COLLECTIBLE_COUNT = 8
 const OBSTACLE_SPAWN_START_DISTANCE = 900
 const INITIAL_CLEAR_DISTANCE = 200
+
+function selectThemedResource(theme: ChapterTheme | null, resourceBoost: number = 1): ResourceType {
+  const weights = theme ? THEMES[theme].resourceWeights : {
+    wood: 30, stone: 25, herb: 20, berry: 15, crystal: 5
+  }
+
+  const adjustedWeights = Object.entries(weights).map(([type, w]) => ({
+    type: type as ResourceType,
+    weight: (w || 10) * resourceBoost
+  }))
+  const totalWeight = adjustedWeights.reduce((sum, w) => sum + w.weight, 0)
+  let random = Math.random() * totalWeight
+
+  for (const w of adjustedWeights) {
+    random -= w.weight
+    if (random <= 0) return w.type
+  }
+  return 'wood'
+}
 
 export class GameEngine {
   private canvas: HTMLCanvasElement
@@ -58,6 +81,11 @@ export class GameEngine {
   private collectedResources: Partial<Record<ResourceType, number>> = {}
   private buffs: Record<string, number> = {}
   private extraLives: number = 0
+
+  private currentTheme: ChapterTheme | null = null
+  private currentArea: AreaNode | null = null
+  private obstacleDensity: number = 1.0
+  private collectibleDensity: number = 1.0
 
   private onGameOverCallback?: (
     score: number,
@@ -119,6 +147,8 @@ export class GameEngine {
   private createInitialState(): GameState {
     const highScore = this.loadHighScore()
     const speedBoost = 1 + (this.buffs['speed_boost'] || 0)
+    const baseSpeed = this.currentTheme ? THEMES[this.currentTheme].baseSpeed : DEFAULT_BASE_SPEED
+    const maxSpeed = this.currentTheme ? THEMES[this.currentTheme].maxSpeed : DEFAULT_MAX_SPEED
     return {
       score: 0,
       coins: 0,
@@ -127,9 +157,9 @@ export class GameEngine {
       isRunning: false,
       isGameOver: false,
       isPaused: false,
-      speed: BASE_SPEED * speedBoost,
-      baseSpeed: BASE_SPEED * speedBoost,
-      maxSpeed: BASE_MAX_SPEED * speedBoost
+      speed: baseSpeed * speedBoost,
+      baseSpeed: baseSpeed * speedBoost,
+      maxSpeed: maxSpeed * speedBoost
     }
   }
 
@@ -231,32 +261,22 @@ export class GameEngine {
   }
 
   private spawnObstacle(): void {
-    const types: Obstacle['type'][] = ['tree', 'rock', 'mushroom', 'log']
-    const type = types[randomInt(0, types.length - 1)]
+    const type = this.currentTheme
+      ? selectThemedObstacleType(this.currentTheme)
+      : (['tree', 'rock', 'mushroom', 'log'] as Obstacle['type'][])[randomInt(0, 3)]
+    
+    const sizeConfig = DEFAULT_OBSTACLE_SIZES[type]
+    const themePool = this.currentTheme ? THEMES[this.currentTheme].obstaclePool : null
     
     let width: number
     let height: number
 
-    switch (type) {
-      case 'tree':
-        width = randomRange(40, 60)
-        height = randomRange(70, 100)
-        break
-      case 'rock':
-        width = randomRange(50, 70)
-        height = randomRange(35, 50)
-        break
-      case 'mushroom':
-        width = randomRange(35, 50)
-        height = randomRange(45, 60)
-        break
-      case 'log':
-        width = randomRange(60, 80)
-        height = randomRange(25, 40)
-        break
-      default:
-        width = 50
-        height = 50
+    if (themePool) {
+      width = randomRange(themePool.sizeRange.width[0], themePool.sizeRange.width[1])
+      height = randomRange(themePool.sizeRange.height[0], themePool.sizeRange.height[1])
+    } else {
+      width = randomRange(sizeConfig.width[0], sizeConfig.width[1])
+      height = randomRange(sizeConfig.height[0], sizeConfig.height[1])
     }
 
     const groundY = this.height * 0.75
@@ -278,7 +298,7 @@ export class GameEngine {
 
     let type: Collectible['type']
     if (isResource) {
-      type = selectRandomResource(resourceBoost)
+      type = selectThemedResource(this.currentTheme, resourceBoost)
     } else {
       const types: Collectible['type'][] = ['coin', 'coin', 'coin', 'star', 'potion']
       type = types[randomInt(0, types.length - 1)]
@@ -357,9 +377,11 @@ export class GameEngine {
     this.groundOffset += this.gameState.speed * dt
 
     this.obstacleTimer += dt
-    const speedFactor = BASE_SPEED / this.gameState.speed
-    const minInterval = OBSTACLE_MIN_INTERVAL * speedFactor
-    const maxInterval = OBSTACLE_MAX_INTERVAL * speedFactor
+    const speedFactor = (this.currentTheme ? THEMES[this.currentTheme].baseSpeed : DEFAULT_BASE_SPEED) / this.gameState.speed
+    const densityFactor = 1 / this.obstacleDensity
+    const themeMultiplier = this.currentTheme ? THEMES[this.currentTheme].obstaclePool.spawnRateMultiplier : 1.0
+    const minInterval = OBSTACLE_MIN_INTERVAL * speedFactor * densityFactor / themeMultiplier
+    const maxInterval = OBSTACLE_MAX_INTERVAL * speedFactor * densityFactor / themeMultiplier
     const obstacleInterval = randomRange(minInterval, maxInterval)
     
     if (this.obstacleTimer > obstacleInterval) {
@@ -368,8 +390,10 @@ export class GameEngine {
     }
 
     this.collectibleTimer += dt
-    if (this.collectibleTimer > COLLECTIBLE_INTERVAL) {
-      if (Math.random() < 0.85) {
+    const collectInterval = COLLECTIBLE_INTERVAL / this.collectibleDensity
+    if (this.collectibleTimer > collectInterval) {
+      const spawnChance = 0.7 + (this.collectibleDensity - 1) * 0.15
+      if (Math.random() < spawnChance) {
         this.spawnCollectible()
       }
       this.collectibleTimer = 0
@@ -533,17 +557,31 @@ export class GameEngine {
   }
 
   private render(): void {
-    this.renderer.clear()
-    this.renderer.drawSun()
-    this.renderer.drawClouds(this.clouds)
-    this.renderer.drawMountains(this.groundOffset)
-    this.renderer.drawBackgroundTrees(this.groundOffset)
-    this.renderer.drawGround(this.groundOffset)
-    this.renderer.drawObstacles(this.obstacles)
+    this.renderer.clear(this.currentTheme ? THEMES[this.currentTheme] : null)
+    this.renderer.drawSun(this.currentTheme ? THEMES[this.currentTheme].sunColor : null)
+    this.renderer.drawClouds(this.clouds, this.currentTheme ? THEMES[this.currentTheme].cloudColor : null)
+    this.renderer.drawMountains(this.groundOffset, this.currentTheme ? THEMES[this.currentTheme].mountainColor : null)
+    this.renderer.drawBackgroundTrees(this.groundOffset, this.currentTheme ? {
+      treeColor: THEMES[this.currentTheme].treeColor,
+      trunkColor: THEMES[this.currentTheme].trunkColor
+    } : null)
+    this.renderer.drawGround(this.groundOffset, this.currentTheme ? {
+      groundLight: THEMES[this.currentTheme].groundColor[0],
+      groundDark: THEMES[this.currentTheme].groundColor[1]
+    } : null)
+    this.renderer.drawObstacles(this.obstacles, this.currentTheme ? {
+      treeColor: THEMES[this.currentTheme].treeColor,
+      trunkColor: THEMES[this.currentTheme].trunkColor
+    } : null)
     this.renderer.drawCollectibles(this.collectibles)
     this.renderer.drawPlayer(this.player)
     this.renderer.drawParticles(this.particles)
-    this.renderer.drawUI(this.gameState.score, this.gameState.coins, this.gameState.distance)
+    this.renderer.drawUI(
+      this.gameState.score,
+      this.gameState.coins,
+      this.gameState.distance,
+      this.currentArea?.targetDistance
+    )
   }
 
   private gameLoop = (timestamp: number): void => {
@@ -560,6 +598,7 @@ export class GameEngine {
     if (this.gameState.isRunning) return
     
     this.applyBuffs()
+    this.setupChapterContext()
     this.reset()
     this.gameState.isRunning = true
     this.gameState.isGameOver = false
@@ -581,6 +620,32 @@ export class GameEngine {
     this.achievements = loadAchievements()
     
     this.spawnInitialContent()
+  }
+
+  private setupChapterContext(): void {
+    const area = getCurrentArea()
+    if (area) {
+      this.currentArea = area
+      this.currentTheme = area.theme
+      this.obstacleDensity = area.obstacleDensity
+      this.collectibleDensity = area.collectibleDensity
+    } else {
+      this.currentArea = null
+      this.currentTheme = null
+      this.obstacleDensity = 1.0
+      this.collectibleDensity = 1.0
+    }
+  }
+
+  setTheme(theme: ChapterTheme | null): void {
+    this.currentTheme = theme
+  }
+
+  setAreaContext(area: AreaNode | null): void {
+    this.currentArea = area
+    this.currentTheme = area?.theme || null
+    this.obstacleDensity = area?.obstacleDensity || 1.0
+    this.collectibleDensity = area?.collectibleDensity || 1.0
   }
 
   private spawnInitialContent(): void {
@@ -612,32 +677,22 @@ export class GameEngine {
   }
 
   private spawnObstacleAt(x: number): void {
-    const types: Obstacle['type'][] = ['tree', 'rock', 'mushroom', 'log']
-    const type = types[randomInt(0, types.length - 1)]
+    const type = this.currentTheme
+      ? selectThemedObstacleType(this.currentTheme)
+      : (['tree', 'rock', 'mushroom', 'log'] as Obstacle['type'][])[randomInt(0, 3)]
+    
+    const sizeConfig = DEFAULT_OBSTACLE_SIZES[type]
+    const themePool = this.currentTheme ? THEMES[this.currentTheme].obstaclePool : null
     
     let width: number
     let height: number
 
-    switch (type) {
-      case 'tree':
-        width = randomRange(40, 60)
-        height = randomRange(70, 100)
-        break
-      case 'rock':
-        width = randomRange(50, 70)
-        height = randomRange(35, 50)
-        break
-      case 'mushroom':
-        width = randomRange(35, 50)
-        height = randomRange(45, 60)
-        break
-      case 'log':
-        width = randomRange(60, 80)
-        height = randomRange(25, 40)
-        break
-      default:
-        width = 50
-        height = 50
+    if (themePool) {
+      width = randomRange(themePool.sizeRange.width[0], themePool.sizeRange.width[1])
+      height = randomRange(themePool.sizeRange.height[0], themePool.sizeRange.height[1])
+    } else {
+      width = randomRange(sizeConfig.width[0], sizeConfig.width[1])
+      height = randomRange(sizeConfig.height[0], sizeConfig.height[1])
     }
 
     const groundY = this.height * 0.75

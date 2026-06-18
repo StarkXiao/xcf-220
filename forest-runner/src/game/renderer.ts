@@ -1,4 +1,4 @@
-import type { Player, Obstacle, Collectible, Cloud, Particle, ResourceType } from './types'
+import type { Player, Obstacle, Collectible, Cloud, Particle, ResourceType, ThemeConfig } from './types'
 
 const COLORS = {
   skyTop: '#87CEEB',
@@ -45,35 +45,38 @@ export class GameRenderer {
     this.groundY = height * 0.75
   }
 
-  clear(): void {
+  clear(theme?: ThemeConfig | null): void {
+    const skyTop = theme?.skyGradient[0] || COLORS.skyTop
+    const skyBottom = theme?.skyGradient[1] || COLORS.skyBottom
     const gradient = this.ctx.createLinearGradient(0, 0, 0, this.height)
-    gradient.addColorStop(0, COLORS.skyTop)
-    gradient.addColorStop(1, COLORS.skyBottom)
+    gradient.addColorStop(0, skyTop)
+    gradient.addColorStop(1, skyBottom)
     this.ctx.fillStyle = gradient
     this.ctx.fillRect(0, 0, this.width, this.height)
   }
 
-  drawSun(): void {
+  drawSun(color?: string | null): void {
     const sunX = this.width * 0.85
     const sunY = this.height * 0.15
     const sunRadius = 40
+    const sunColor = color || COLORS.sun
 
     const glow = this.ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunRadius * 2)
-    glow.addColorStop(0, 'rgba(255, 215, 0, 0.8)')
-    glow.addColorStop(1, 'rgba(255, 215, 0, 0)')
+    glow.addColorStop(0, sunColor + 'CC')
+    glow.addColorStop(1, sunColor + '00')
     this.ctx.fillStyle = glow
     this.ctx.beginPath()
     this.ctx.arc(sunX, sunY, sunRadius * 2, 0, Math.PI * 2)
     this.ctx.fill()
 
-    this.ctx.fillStyle = COLORS.sun
+    this.ctx.fillStyle = sunColor
     this.ctx.beginPath()
     this.ctx.arc(sunX, sunY, sunRadius, 0, Math.PI * 2)
     this.ctx.fill()
   }
 
-  drawClouds(clouds: Cloud[]): void {
-    this.ctx.fillStyle = COLORS.cloud
+  drawClouds(clouds: Cloud[], color?: string | null): void {
+    this.ctx.fillStyle = color || COLORS.cloud
     clouds.forEach(cloud => {
       this.drawCloud(cloud.x, cloud.y, cloud.size)
     })
@@ -88,8 +91,8 @@ export class GameRenderer {
     this.ctx.fill()
   }
 
-  drawMountains(offset: number): void {
-    this.ctx.fillStyle = '#98D8AA'
+  drawMountains(offset: number, color?: string | null): void {
+    this.ctx.fillStyle = color || '#98D8AA'
     this.ctx.beginPath()
     this.ctx.moveTo(0, this.groundY)
     
@@ -109,21 +112,31 @@ export class GameRenderer {
     this.ctx.fill()
   }
 
-  drawBackgroundTrees(offset: number): void {
+  drawBackgroundTrees(
+    offset: number,
+    themeColors?: { treeColor: string; trunkColor: string } | null
+  ): void {
     const treeSpacing = 150
     const numTrees = Math.ceil(this.width / treeSpacing) + 2
 
     for (let i = 0; i < numTrees; i++) {
       const x = (i * treeSpacing - offset * 0.5) % (this.width + treeSpacing) - treeSpacing
       const height = 60 + Math.sin(i * 2.3) * 20
-      this.drawBackgroundTree(x, this.groundY - 20, height)
+      this.drawBackgroundTree(x, this.groundY - 20, height, themeColors)
     }
   }
 
-  private drawBackgroundTree(x: number, y: number, height: number): void {
+  private drawBackgroundTree(
+    x: number,
+    y: number,
+    height: number,
+    themeColors?: { treeColor: string; trunkColor: string } | null
+  ): void {
     const width = height * 0.4
+    const treeColor = themeColors?.treeColor || '#6B8E23'
+    const trunkColor = themeColors?.trunkColor || '#8B7355'
     
-    this.ctx.fillStyle = '#6B8E23'
+    this.ctx.fillStyle = treeColor
     this.ctx.beginPath()
     this.ctx.moveTo(x, y)
     this.ctx.lineTo(x + width / 2, y - height)
@@ -131,20 +144,25 @@ export class GameRenderer {
     this.ctx.closePath()
     this.ctx.fill()
 
-    this.ctx.fillStyle = '#8B7355'
+    this.ctx.fillStyle = trunkColor
     const trunkWidth = width * 0.15
     const trunkHeight = height * 0.2
     this.ctx.fillRect(x + width / 2 - trunkWidth / 2, y - trunkHeight, trunkWidth, trunkHeight)
   }
 
-  drawGround(offset: number): void {
+  drawGround(
+    offset: number,
+    themeColors?: { groundLight: string; groundDark: string } | null
+  ): void {
+    const groundLight = themeColors?.groundLight || COLORS.ground
+    const groundDark = themeColors?.groundDark || COLORS.groundDark
     const gradient = this.ctx.createLinearGradient(0, this.groundY, 0, this.height)
-    gradient.addColorStop(0, COLORS.ground)
-    gradient.addColorStop(1, COLORS.groundDark)
+    gradient.addColorStop(0, groundLight)
+    gradient.addColorStop(1, groundDark)
     this.ctx.fillStyle = gradient
     this.ctx.fillRect(0, this.groundY, this.width, this.height - this.groundY)
 
-    this.ctx.fillStyle = COLORS.groundDark
+    this.ctx.fillStyle = groundDark
     const grassSpacing = 30
     for (let i = 0; i < Math.ceil(this.width / grassSpacing) + 2; i++) {
       const x = (i * grassSpacing - offset) % (this.width + grassSpacing) - grassSpacing
@@ -219,12 +237,15 @@ export class GameRenderer {
     this.ctx.globalAlpha = 1
   }
 
-  drawObstacles(obstacles: Obstacle[]): void {
+  drawObstacles(
+    obstacles: Obstacle[],
+    themeColors?: { treeColor: string; trunkColor: string } | null
+  ): void {
     obstacles.forEach(obs => {
       if (!obs.active) return
       switch (obs.type) {
         case 'tree':
-          this.drawTree(obs)
+          this.drawTree(obs, themeColors)
           break
         case 'rock':
           this.drawRock(obs)
@@ -239,14 +260,19 @@ export class GameRenderer {
     })
   }
 
-  private drawTree(obs: Obstacle): void {
+  private drawTree(
+    obs: Obstacle,
+    themeColors?: { treeColor: string; trunkColor: string } | null
+  ): void {
     const { x, y, width, height } = obs
+    const treeColor = themeColors?.treeColor || COLORS.tree
+    const trunkColor = themeColors?.trunkColor || COLORS.treeTrunk
 
-    this.ctx.fillStyle = COLORS.treeTrunk
+    this.ctx.fillStyle = trunkColor
     const trunkWidth = width * 0.25
     this.ctx.fillRect(x + width / 2 - trunkWidth / 2, y + height * 0.5, trunkWidth, height * 0.5)
 
-    this.ctx.fillStyle = COLORS.tree
+    this.ctx.fillStyle = treeColor
     this.ctx.beginPath()
     this.ctx.moveTo(x + width / 2, y)
     this.ctx.lineTo(x + width, y + height * 0.6)
@@ -254,13 +280,22 @@ export class GameRenderer {
     this.ctx.closePath()
     this.ctx.fill()
 
-    this.ctx.fillStyle = '#2E8B57'
+    this.ctx.fillStyle = this.adjustColor(treeColor, -15)
     this.ctx.beginPath()
     this.ctx.moveTo(x + width / 2, y + height * 0.15)
     this.ctx.lineTo(x + width * 0.85, y + height * 0.5)
     this.ctx.lineTo(x + width * 0.15, y + height * 0.5)
     this.ctx.closePath()
     this.ctx.fill()
+  }
+
+  private adjustColor(color: string, percent: number): string {
+    const num = parseInt(color.replace('#', ''), 16)
+    const amt = Math.round(2.55 * percent)
+    const R = Math.max(0, Math.min(255, (num >> 16) + amt))
+    const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amt))
+    const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt))
+    return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)
   }
 
   private drawRock(obs: Obstacle): void {
@@ -560,12 +595,15 @@ export class GameRenderer {
     this.ctx.globalAlpha = 1
   }
 
-  drawUI(score: number, coins: number, distance: number): void {
+  drawUI(score: number, coins: number, distance: number, targetDistance?: number): void {
+    const hasTarget = targetDistance && targetDistance > 0
+    const boxHeight = hasTarget ? 115 : 90
+
     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
-    this.ctx.fillRect(10, 10, 150, 90)
+    this.ctx.fillRect(10, 10, 150, boxHeight)
     this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
     this.ctx.lineWidth = 2
-    this.ctx.strokeRect(10, 10, 150, 90)
+    this.ctx.strokeRect(10, 10, 150, boxHeight)
 
     this.ctx.fillStyle = '#FFF'
     this.ctx.font = 'bold 18px Arial'
@@ -574,6 +612,24 @@ export class GameRenderer {
     this.ctx.fillText(`分数: ${Math.floor(score)}`, 20, 20)
     this.ctx.fillText(`金币: ${coins} 💰`, 20, 48)
     this.ctx.fillText(`距离: ${Math.floor(distance)}m`, 20, 76)
+
+    if (hasTarget) {
+      const progress = Math.min(1, distance / targetDistance!)
+      const barX = 20
+      const barY = 104
+      const barWidth = 130
+      const barHeight = 10
+
+      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'
+      this.ctx.fillRect(barX, barY, barWidth, barHeight)
+
+      this.ctx.fillStyle = progress >= 1 ? '#4CAF50' : '#FFD700'
+      this.ctx.fillRect(barX, barY, barWidth * progress, barHeight)
+
+      this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
+      this.ctx.lineWidth = 1
+      this.ctx.strokeRect(barX, barY, barWidth, barHeight)
+    }
   }
 
   getGroundY(): number {

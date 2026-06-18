@@ -4,16 +4,20 @@ import HomeScreen from './components/HomeScreen.vue'
 import GameCanvas from './components/GameCanvas.vue'
 import AchievementsScreen from './components/AchievementsScreen.vue'
 import CampScreen from './components/CampScreen.vue'
+import MapScreen from './components/MapScreen.vue'
+import ChapterSettlement from './components/ChapterSettlement.vue'
 import { loadAchievements } from './game/achievements'
 import { addRunRewards } from './game/campStore'
-import type { Achievement, ResourceType } from './game/types'
+import type { Achievement, ResourceType, ChapterRunResult } from './game/types'
+import { completeRun, getCurrentArea } from './game/chapterStore'
 
-type GameScreen = 'home' | 'game' | 'achievements' | 'camp'
+type GameScreen = 'home' | 'game' | 'achievements' | 'camp' | 'map' | 'chapterSettlement'
 
 const currentScreen = ref<GameScreen>('home')
 const highScore = ref(0)
 const achievements = ref<Achievement[]>([])
 const isPlaying = ref(false)
+const chapterRunResult = ref<ChapterRunResult | null>(null)
 
 function loadHighScore() {
   try {
@@ -41,10 +45,15 @@ function showCamp() {
   currentScreen.value = 'camp'
 }
 
+function showMap() {
+  currentScreen.value = 'map'
+}
+
 function goHome() {
   currentScreen.value = 'home'
   isPlaying.value = false
   loadHighScore()
+  chapterRunResult.value = null
 }
 
 function handleGameOver(
@@ -57,6 +66,17 @@ function handleGameOver(
     highScore.value = score
   }
   addRunRewards(coins, resources)
+
+  const area = getCurrentArea()
+  if (area) {
+    const result = completeRun(score, coins, _distance, resources)
+    if (result) {
+      chapterRunResult.value = result
+      currentScreen.value = 'chapterSettlement'
+      isPlaying.value = false
+      return
+    }
+  }
 }
 
 function handleAchievement(achievement: Achievement) {
@@ -69,6 +89,21 @@ function handleAchievement(achievement: Achievement) {
 function handleGoCampFromGame() {
   isPlaying.value = false
   currentScreen.value = 'camp'
+}
+
+function handleSettlementContinue() {
+  currentScreen.value = 'map'
+  chapterRunResult.value = null
+}
+
+function handleSettlementRestart() {
+  chapterRunResult.value = null
+  startGame()
+}
+
+function handleSettlementBackToMap() {
+  chapterRunResult.value = null
+  currentScreen.value = 'map'
 }
 
 onMounted(() => {
@@ -85,6 +120,7 @@ onMounted(() => {
       @start="startGame"
       @show-achievements="showAchievements"
       @show-camp="showCamp"
+      @show-map="showMap"
     />
     
     <GameCanvas
@@ -94,6 +130,7 @@ onMounted(() => {
       @achievement="handleAchievement"
       @go-home="goHome"
       @go-camp="handleGoCampFromGame"
+      @go-map="showMap"
     />
     
     <AchievementsScreen
@@ -106,6 +143,22 @@ onMounted(() => {
       v-else-if="currentScreen === 'camp'"
       @back="goHome"
       @start-game="startGame"
+    />
+
+    <MapScreen
+      v-else-if="currentScreen === 'map'"
+      @back="goHome"
+      @start-game="startGame"
+      @show-achievements="showAchievements"
+    />
+
+    <ChapterSettlement
+      v-else-if="currentScreen === 'chapterSettlement'"
+      :result="chapterRunResult"
+      @continue="handleSettlementContinue"
+      @restart="handleSettlementRestart"
+      @back-to-map="handleSettlementBackToMap"
+      @new-achievement="handleAchievement"
     />
   </div>
 </template>

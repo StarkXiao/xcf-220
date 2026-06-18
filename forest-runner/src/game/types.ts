@@ -150,4 +150,106 @@ export interface CampState {
   } | null
 }
 
-export type GameScreen = 'home' | 'game' | 'gameover' | 'achievements' | 'camp'
+export type GameScreen = 'home' | 'game' | 'gameover' | 'achievements' | 'camp' | 'map' | 'chapterSettlement'
+
+export type ChapterTheme = 'forest' | 'desert' | 'snow' | 'volcano' | 'ocean' | 'sky'
+
+export interface ObstaclePoolConfig {
+  types: Obstacle['type'][]
+  weights: number[]
+  sizeRange: {
+    width: [number, number]
+    height: [number, number]
+  }
+  spawnRateMultiplier: number
+}
+
+export interface ThemeConfig {
+  name: string
+  icon: string
+  skyGradient: [string, string]
+  groundColor: [string, string]
+  mountainColor: string
+  treeColor: string
+  trunkColor: string
+  sunColor: string
+  cloudColor: string
+  obstaclePool: ObstaclePoolConfig
+  resourceWeights: Partial<Record<ResourceType, number>>
+  baseSpeed: number
+  maxSpeed: number
+}
+
+export interface AreaNode {
+  id: string
+  name: string
+  icon: string
+  description: string
+  position: { x: number; y: number }
+  unlocked: boolean
+  completed: boolean
+  stars: number
+  maxStars: number
+  requiredScore: number
+  requiredDistance: number
+  rewards: {
+    coins: number
+    resources: Partial<Record<AllResourceType, number>>
+    achievements?: string[]
+  }
+  theme: ChapterTheme
+  difficulty: 1 | 2 | 3 | 4 | 5
+  obstacleDensity: number
+  collectibleDensity: number
+  targetDistance: number
+}
+
+export interface Chapter {
+  id: string
+  name: string
+  description: string
+  icon: string
+  order: number
+  unlocked: boolean
+  completed: boolean
+  areas: AreaNode[]
+  backgroundTheme: ChapterTheme
+  unlockedCondition?: {
+    previousChapterId?: string
+    previousAreaId?: string
+    requiredStars?: number
+    requiredAchievements?: string[]
+  }
+  bonusRewards: {
+    coins: number
+    resources: Partial<Record<AllResourceType, number>>
+  }
+}
+
+export interface ChapterRunResult {
+  chapterId: string
+  areaId: string
+  score: number
+  coins: number
+  distance: number
+  resources: Partial<Record<ResourceType, number>>
+  starsEarned: number
+  newAchievements: string[]
+  isNewRecord: boolean
+}
+
+export interface ChapterState {
+  currentChapterId: string | null
+  currentAreaId: string | null
+  chapters: Chapter[]
+  totalStars: number
+  lastRunResult: ChapterRunResult | null
+  bonusClaimed: Record<string, boolean>
+}
+
+export interface ExtendedGameState extends GameState {
+  chapterId?: string
+  areaId?: string
+  theme?: ChapterTheme
+  targetDistance?: number
+}

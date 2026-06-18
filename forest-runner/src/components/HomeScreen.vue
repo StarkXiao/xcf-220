@@ -3,6 +3,7 @@ defineEmits<{
   (e: 'start'): void
   (e: 'showAchievements'): void
   (e: 'showCamp'): void
+  (e: 'showMap'): void
 }>()
 
 defineProps<{
@@ -39,6 +40,10 @@ defineProps<{
         <button class="btn btn-start" @click="$emit('start')">
           <span class="btn-icon">▶</span>
           开始游戏
+        </button>
+        <button class="btn btn-map" @click="$emit('showMap')">
+          <span class="btn-icon">🗺️</span>
+          章节冒险
         </button>
         <button class="btn btn-camp" @click="$emit('showCamp')">
           <span class="btn-icon">🏕️</span>
@@ -275,7 +280,22 @@ defineProps<{
 
 .btn-camp:active {
   box-shadow: 0 2px 0 #8B4513, 0 4px 10px rgba(0,0,0,0.2);
-  transform: translateY(4px) scale(0.98);
+  transform: translateY(4px) scale(0.97);
+}
+
+.btn-map {
+  background: linear-gradient(180deg, #6A5ACD 0%, #483D8B 100%);
+  color: white;
+  box-shadow: 0 6px 0 #4B0082, 0 8px 15px rgba(0,0,0,0.2);
+}
+
+.btn-map:hover {
+  box-shadow: 0 8px 0 #4B0082, 0 10px 20px rgba(0,0,0,0.25);
+}
+
+.btn-map:active {
+  box-shadow: 0 2px 0 #4B0082, 0 4px 10px rgba(0,0,0,0.2);
+  transform: translateY(4px) scale(0.97);
 }
 
 .btn-achievements {

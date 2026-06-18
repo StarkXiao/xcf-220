@@ -16,6 +16,7 @@ defineEmits<{
   (e: 'restart'): void
   (e: 'home'): void
   (e: 'goCamp'): void
+  (e: 'goMap'): void
 }>()
 
 const displayScore = computed(() => Math.floor(props.score))
@@ -89,6 +90,10 @@ const resourceList = computed(() => {
         <button class="btn btn-restart" @click="$emit('restart')">
           <span class="btn-icon">🔄</span>
           再来一次
+        </button>
+        <button class="btn btn-map" @click="$emit('goMap')">
+          <span class="btn-icon">🗺️</span>
+          章节地图
         </button>
         <button class="btn btn-camp" @click="$emit('goCamp')">
           <span class="btn-icon">🏕️</span>
@@ -373,6 +378,17 @@ const resourceList = computed(() => {
 
 .btn-camp:active {
   box-shadow: 0 2px 0 #8B4513;
+  transform: translateY(2px) scale(0.97);
+}
+
+.btn-map {
+  background: linear-gradient(180deg, #6A5ACD 0%, #483D8B 100%);
+  color: white;
+  box-shadow: 0 4px 0 #4B0082;
+}
+
+.btn-map:active {
+  box-shadow: 0 2px 0 #4B0082;
   transform: translateY(2px) scale(0.97);
 }
 
