@@ -14,6 +14,7 @@ import {
 } from './campStore'
 import type { AllResourceType } from './types'
 import { loadAchievements, achievementsList } from './achievements'
+import { checkCosmeticUnlocks } from './cosmeticStore'
 
 const STORAGE_KEY = 'forest-runner-chapter-state'
 
@@ -292,6 +293,10 @@ export function completeRun(
   }
 
   chapterState.lastRunResult = result
+
+  if (starsEarned > 0 || newAchievements.length > 0 || chapter.completed) {
+    checkCosmeticUnlocks()
+  }
 
   return result
 }

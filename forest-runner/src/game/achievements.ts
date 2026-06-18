@@ -1,5 +1,6 @@
 import type { Achievement, GameState } from './types'
 import { getTotalStars, getChapterById, chapterState } from './chapterStore'
+import { checkCosmeticUnlocks } from './cosmeticStore'
 
 const STORAGE_KEY = 'forest-runner-achievements'
 
@@ -267,6 +268,7 @@ export function checkAchievements(state: GameState, achievements: Achievement[])
   })
   if (updated) {
     saveAchievements(newAchievements)
+    checkCosmeticUnlocks()
   }
   return newAchievements
 }
@@ -287,6 +289,7 @@ export function checkChapterAchievements(achievements: Achievement[]): Achieveme
   })
   if (updated) {
     saveAchievements(newAchievements)
+    checkCosmeticUnlocks()
   }
   return newAchievements
 }

@@ -17,6 +17,7 @@ import {
   getRewardsForLevel
 } from './battlePassData'
 import { addResource, hasResources, consumeResources } from './campStore'
+import { checkCosmeticUnlocks } from './cosmeticStore'
 
 const STORAGE_KEY = 'forest-runner-battle-pass'
 
@@ -144,10 +145,15 @@ export function addPoints(amount: number): void {
   if (amount <= 0) return
   const season = getCurrentSeason()
   const maxPoints = season.maxLevel * season.pointsPerLevel
+  const oldLevel = battlePassState.level
   
   battlePassState.points = Math.min(battlePassState.points + amount, maxPoints)
   battlePassState.totalPointsEarned += amount
   updateLevel()
+  
+  if (battlePassState.level > oldLevel) {
+    checkCosmeticUnlocks()
+  }
 }
 
 export function checkAndResetDailyTasks(): void {

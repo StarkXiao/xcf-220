@@ -9,14 +9,16 @@ import ChapterSettlement from './components/ChapterSettlement.vue'
 import PetScreen from './components/PetScreen.vue'
 import BattlePassScreen from './components/BattlePassScreen.vue'
 import ShopScreen from './components/ShopScreen.vue'
+import CosmeticScreen from './components/CosmeticScreen.vue'
 import { loadAchievements } from './game/achievements'
 import { addRunRewards } from './game/campStore'
 import type { Achievement, ResourceType, ChapterRunResult } from './game/types'
 import { completeRun, getCurrentArea } from './game/chapterStore'
 import { recordRunStats, checkAndResetDailyTasks, hasAnyUnclaimed } from './game/battlePassStore'
 import { checkAndRefreshStock } from './game/shopStore'
+import { checkCosmeticUnlocks } from './game/cosmeticStore'
 
-type GameScreen = 'home' | 'game' | 'achievements' | 'camp' | 'map' | 'chapterSettlement' | 'pet' | 'battlePass' | 'shop'
+type GameScreen = 'home' | 'game' | 'achievements' | 'camp' | 'map' | 'chapterSettlement' | 'pet' | 'battlePass' | 'shop' | 'cosmetic'
 
 const currentScreen = ref<GameScreen>('home')
 const highScore = ref(0)
@@ -71,6 +73,11 @@ function showBattlePass() {
 function showShop() {
   checkAndRefreshStock()
   currentScreen.value = 'shop'
+}
+
+function showCosmetic() {
+  checkCosmeticUnlocks()
+  currentScreen.value = 'cosmetic'
 }
 
 function goHome() {
@@ -158,6 +165,7 @@ onMounted(() => {
       @show-map="showMap"
       @show-battle-pass="showBattlePass"
       @show-shop="showShop"
+      @show-cosmetic="showCosmetic"
     />
     
     <GameCanvas
@@ -212,6 +220,12 @@ onMounted(() => {
 
     <ShopScreen
       v-else-if="currentScreen === 'shop'"
+      @back="goHome"
+      @start-game="startGame"
+    />
+
+    <CosmeticScreen
+      v-else-if="currentScreen === 'cosmetic'"
       @back="goHome"
       @start-game="startGame"
     />

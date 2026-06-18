@@ -496,3 +496,73 @@ export interface ShopState {
 }
 
 export type ShopTabType = 'featured' | 'consumables' | 'permanent' | 'inventory'
+
+export type CosmeticCategory = 'skin' | 'hat' | 'accessory' | 'trail' | 'emote' | 'title'
+
+export type CosmeticRarity = 'common' | 'rare' | 'epic' | 'legendary'
+
+export type UnlockConditionType = 
+  | 'default'
+  | 'achievement'
+  | 'chapter'
+  | 'battle_pass'
+  | 'shop'
+  | 'event'
+  | 'stars'
+  | 'distance'
+
+export interface UnlockCondition {
+  type: UnlockConditionType
+  value?: string | number
+  description: string
+}
+
+export interface CosmeticColorConfig {
+  body: string
+  head: string
+  hat: string
+  accent: string
+  skin: string
+  shoes: string
+}
+
+export interface CosmeticItem {
+  id: string
+  name: string
+  description: string
+  icon: string
+  category: CosmeticCategory
+  rarity: CosmeticRarity
+  colors?: CosmeticColorConfig
+  trailColor?: string
+  particleColor?: string
+  emoteIcon?: string
+  titleText?: string
+  unlockCondition: UnlockCondition
+  sortOrder: number
+}
+
+export interface CosmeticInstance {
+  cosmeticId: string
+  unlocked: boolean
+  unlockedAt?: number
+  equipped: boolean
+}
+
+export interface CosmeticState {
+  cosmetics: CosmeticInstance[]
+  equipped: Record<CosmeticCategory, string | null>
+  lastNewCosmeticId: string | null
+  showUnlockAnimation: boolean
+}
+
+export interface CosmeticPreviewConfig {
+  colors: CosmeticColorConfig
+  trailColor?: string
+  particleColor?: string
+  showHat: boolean
+  showAccessory: boolean
+  showTrail: boolean
+}
+
+export type CosmeticTabType = 'all' | CosmeticCategory

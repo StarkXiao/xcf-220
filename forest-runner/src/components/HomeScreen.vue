@@ -6,6 +6,7 @@ defineEmits<{
   (e: 'showMap'): void
   (e: 'showBattlePass'): void
   (e: 'showShop'): void
+  (e: 'showCosmetic'): void
 }>()
 
 defineProps<{
@@ -71,6 +72,10 @@ defineProps<{
         <button class="btn btn-shop" @click="$emit('showShop')">
           <span class="btn-icon">🏪</span>
           商店
+        </button>
+        <button class="btn btn-cosmetic" @click="$emit('showCosmetic')">
+          <span class="btn-icon">🎨</span>
+          角色装扮
         </button>
       </div>
 
@@ -456,6 +461,21 @@ defineProps<{
 
 .btn-shop:active {
   box-shadow: 0 2px 0 #880E4F, 0 4px 10px rgba(0,0,0,0.2);
+  transform: translateY(4px) scale(0.98);
+}
+
+.btn-cosmetic {
+  background: linear-gradient(180deg, #9C27B0 0%, #7B1FA2 100%);
+  color: white;
+  box-shadow: 0 6px 0 #4A148C, 0 8px 15px rgba(0,0,0,0.2);
+}
+
+.btn-cosmetic:hover {
+  box-shadow: 0 8px 0 #4A148C, 0 10px 20px rgba(0,0,0,0.25);
+}
+
+.btn-cosmetic:active {
+  box-shadow: 0 2px 0 #4A148C, 0 4px 10px rgba(0,0,0,0.2);
   transform: translateY(4px) scale(0.98);
 }
 

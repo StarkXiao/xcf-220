@@ -32,6 +32,8 @@ export class GameRenderer {
   private height: number
   private groundY: number
   private skinColors: SkinColorConfig | null = null
+  private _trailColors: { trailColor?: string; particleColor?: string } = {}
+  private _playerTitle: string | null = null
 
   constructor(ctx: CanvasRenderingContext2D, width: number, height: number) {
     this.ctx = ctx
@@ -42,6 +44,22 @@ export class GameRenderer {
 
   setSkinColors(colors: SkinColorConfig | null): void {
     this.skinColors = colors
+  }
+
+  setTrailColors(colors: { trailColor?: string; particleColor?: string }): void {
+    this._trailColors = colors
+  }
+
+  setPlayerTitle(title: string | null): void {
+    this._playerTitle = title
+  }
+
+  getTrailColors(): { trailColor?: string; particleColor?: string } {
+    return this._trailColors
+  }
+
+  getPlayerTitle(): string | null {
+    return this._playerTitle
   }
 
   resize(width: number, height: number): void {
@@ -679,6 +697,54 @@ export class GameRenderer {
       this.ctx.fill()
     })
     this.ctx.globalAlpha = 1
+  }
+
+  drawTrailParticles(trailParticles: Array<{ x: number; y: number; life: number; maxLife: number; size: number; color: string }>): void {
+    trailParticles.forEach(p => {
+      const alpha = p.life / p.maxLife
+      const glow = this.ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2)
+      glow.addColorStop(0, p.color + Math.floor(alpha * 200).toString(16).padStart(2, '0'))
+      glow.addColorStop(1, p.color + '00')
+      
+      this.ctx.fillStyle = glow
+      this.ctx.beginPath()
+      this.ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2)
+      this.ctx.fill()
+
+      this.ctx.globalAlpha = alpha
+      this.ctx.fillStyle = p.color
+      this.ctx.beginPath()
+      this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+      this.ctx.fill()
+    })
+    this.ctx.globalAlpha = 1
+  }
+
+  drawPlayerTitle(player: Player, title: string): void {
+    const { x, y, width } = player
+    const cx = x + width / 2
+    const titleY = y - 20
+
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'
+    const padding = 8
+    const textWidth = title.length * 14 + padding * 2
+    const textHeight = 22
+    this.ctx.beginPath()
+    this.ctx.roundRect(cx - textWidth / 2, titleY - textHeight / 2, textWidth, textHeight, 8)
+    this.ctx.fill()
+
+    this.ctx.strokeStyle = '#FFD700'
+    this.ctx.lineWidth = 2
+    this.ctx.stroke()
+
+    this.ctx.fillStyle = '#FFD700'
+    this.ctx.font = 'bold 14px Arial'
+    this.ctx.textAlign = 'center'
+    this.ctx.textBaseline = 'middle'
+    this.ctx.fillText(title, cx, titleY)
+
+    this.ctx.textAlign = 'left'
+    this.ctx.textBaseline = 'alphabetic'
   }
 
   drawUI(score: number, coins: number, distance: number, targetDistance?: number): void {

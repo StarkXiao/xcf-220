@@ -23,12 +23,12 @@ import {
   getEquippedPetInfo,
   addRunExpToPet
 } from './petStore'
-import { getEquippedSkinColors } from './battlePassStore'
 import {
   getCombinedShopBuffs,
   prepareRunEffects
 } from './shopStore'
 import type { SkinColorConfig } from './types'
+import { getEquippedColors, getEquippedTrailColors, getEquippedTitle } from './cosmeticStore'
 
 const GRAVITY = 0.6
 const BASE_JUMP_FORCE = -14
@@ -109,6 +109,9 @@ export class GameEngine {
   private onAchievementUnlock?: (achievement: Achievement) => void
   private playerJumpCallback?: () => void
   private skinColors: SkinColorConfig | null = null
+  private trailColors: { trailColor?: string; particleColor?: string } = {}
+  private playerTitle: string | null = null
+  private trailParticles: Array<{ x: number; y: number; life: number; maxLife: number; size: number; color: string }> = []
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -412,6 +415,7 @@ export class GameEngine {
     this.updateCollectibles(dt)
     this.updateClouds(dt)
     this.updateParticles(dt)
+    this.updateTrailParticles(dt)
 
     this.groundOffset += this.gameState.speed * dt
 
@@ -509,6 +513,34 @@ export class GameEngine {
       p.velocityY += 0.2 * dt
       p.life -= dt
       return p.life > 0
+    })
+  }
+
+  private updateTrailParticles(dt: number): void {
+    if (!this.trailColors.trailColor || !this.gameState.isRunning) return
+
+    if (this.gameState.speed > 0 && Math.random() < 0.3) {
+      this.spawnTrailParticle()
+    }
+
+    this.trailParticles = this.trailParticles.filter(p => {
+      p.x -= this.gameState.speed * 0.5 * dt
+      p.life -= dt
+      return p.life > 0
+    })
+  }
+
+  private spawnTrailParticle(): void {
+    const color = this.trailColors.particleColor || this.trailColors.trailColor || '#FFD700'
+    const playerBottom = this.player.y + this.player.height
+
+    this.trailParticles.push({
+      x: this.player.x + this.player.width / 2 + randomRange(-10, 10),
+      y: randomRange(playerBottom - 20, playerBottom + 10),
+      life: 30,
+      maxLife: 30,
+      size: randomRange(3, 8),
+      color
     })
   }
 
@@ -671,12 +703,16 @@ export class GameEngine {
       trunkColor: THEMES[this.currentTheme].trunkColor
     } : null)
     this.renderer.drawCollectibles(this.collectibles)
+    this.renderer.drawTrailParticles(this.trailParticles)
     this.renderer.drawPlayer(this.player)
     if (this.followPet) {
       const petInfo = getEquippedPetInfo()
       this.renderer.drawFollowPet(this.followPet, petInfo)
     }
     this.renderer.drawParticles(this.particles)
+    if (this.playerTitle) {
+      this.renderer.drawPlayerTitle(this.player, this.playerTitle)
+    }
     this.renderer.drawUI(
       this.gameState.score,
       this.gameState.coins,
@@ -701,8 +737,12 @@ export class GameEngine {
     this.applyBuffs()
     this.setupChapterContext()
     this.reset()
-    this.skinColors = getEquippedSkinColors()
+    this.skinColors = getEquippedColors()
+    this.trailColors = getEquippedTrailColors()
+    this.playerTitle = getEquippedTitle()
     this.renderer.setSkinColors(this.skinColors)
+    this.renderer.setTrailColors(this.trailColors)
+    this.renderer.setPlayerTitle(this.playerTitle)
     this.gameState.isRunning = true
     this.gameState.isGameOver = false
     this.lastTime = 0
@@ -715,6 +755,7 @@ export class GameEngine {
     this.obstacles = []
     this.collectibles = []
     this.particles = []
+    this.trailParticles = []
     this.groundOffset = 0
     this.obstacleTimer = OBSTACLE_MIN_INTERVAL * 0.5
     this.collectibleTimer = 15
