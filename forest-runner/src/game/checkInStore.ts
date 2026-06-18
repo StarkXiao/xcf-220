@@ -138,21 +138,15 @@ function checkAndArchiveMonth(state: CheckInState): void {
 
 function createArchiveEntry(
   monthData: CheckInMonthData,
-  state: CheckInState
+  _state: CheckInState
 ): CheckInArchiveEntry {
   const checkedDays = monthData.records.filter(r => r.checkedIn).length
   const maxStreak = calculateMaxStreakForMonth(monthData)
-  const rewardsClaimed = state.claimedRewards.filter(id => {
-    const dayMatch = id.match(/reward-(\d+)/)
-    if (dayMatch) {
-      const day = parseInt(dayMatch[1], 10)
-      return day <= checkedDays
-    }
-    return false
-  })
+  const monthPrefix = `${monthData.year}-${String(monthData.month + 1).padStart(2, '0')}`
+  const rewardsClaimed = _state.claimedRewards.filter(id => id.includes(monthPrefix))
 
   return {
-    month: `${monthData.year}-${String(monthData.month + 1).padStart(2, '0')}`,
+    month: monthPrefix,
     totalDays: monthData.records.length,
     checkedDays,
     maxStreak,
@@ -298,7 +292,7 @@ export function checkIn(): { success: boolean; rewards: CheckInReward[]; streakB
   const rewards: CheckInReward[] = []
   const streakReward = getRewardForStreakDay(checkInState.currentStreak)
   if (streakReward) {
-    const rewardId = `reward-${checkInState.currentStreak}`
+    const rewardId = `reward-${todayKey}`
     if (!checkInState.claimedRewards.includes(rewardId)) {
       checkInState.claimedRewards.push(rewardId)
       rewards.push({ ...streakReward, id: rewardId, day: checkInState.currentStreak })
@@ -309,7 +303,7 @@ export function checkIn(): { success: boolean; rewards: CheckInReward[]; streakB
   let streakBonus: CheckInReward | undefined
   const bonus = getStreakBonus(checkInState.currentStreak)
   if (bonus) {
-    const bonusId = `bonus-${checkInState.currentStreak}`
+    const bonusId = `bonus-${todayKey}`
     if (!checkInState.claimedRewards.includes(bonusId)) {
       checkInState.claimedRewards.push(bonusId)
       streakBonus = { ...bonus, id: bonusId, day: checkInState.currentStreak }
@@ -347,11 +341,21 @@ export function supplementCheckIn(dateKey: string): { success: boolean; rewards:
   const simulatedStreak = calculateSimulatedStreak(dateKey)
   const streakReward = getRewardForStreakDay(simulatedStreak)
   if (streakReward) {
-    const rewardId = `reward-${simulatedStreak}`
+    const rewardId = `supp-${dateKey}`
     if (!checkInState.claimedRewards.includes(rewardId)) {
       checkInState.claimedRewards.push(rewardId)
       rewards.push({ ...streakReward, id: rewardId, day: simulatedStreak })
       distributeReward(streakReward)
+    }
+  }
+
+  const bonus = getStreakBonus(simulatedStreak)
+  if (bonus) {
+    const bonusId = `supp-bonus-${dateKey}`
+    if (!checkInState.claimedRewards.includes(bonusId)) {
+      checkInState.claimedRewards.push(bonusId)
+      rewards.push({ ...bonus, id: bonusId, day: simulatedStreak })
+      distributeReward(bonus)
     }
   }
 
