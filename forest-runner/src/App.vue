@@ -8,13 +8,15 @@ import MapScreen from './components/MapScreen.vue'
 import ChapterSettlement from './components/ChapterSettlement.vue'
 import PetScreen from './components/PetScreen.vue'
 import BattlePassScreen from './components/BattlePassScreen.vue'
+import ShopScreen from './components/ShopScreen.vue'
 import { loadAchievements } from './game/achievements'
 import { addRunRewards } from './game/campStore'
 import type { Achievement, ResourceType, ChapterRunResult } from './game/types'
 import { completeRun, getCurrentArea } from './game/chapterStore'
 import { recordRunStats, checkAndResetDailyTasks, hasAnyUnclaimed } from './game/battlePassStore'
+import { checkAndRefreshStock } from './game/shopStore'
 
-type GameScreen = 'home' | 'game' | 'achievements' | 'camp' | 'map' | 'chapterSettlement' | 'pet' | 'battlePass'
+type GameScreen = 'home' | 'game' | 'achievements' | 'camp' | 'map' | 'chapterSettlement' | 'pet' | 'battlePass' | 'shop'
 
 const currentScreen = ref<GameScreen>('home')
 const highScore = ref(0)
@@ -64,6 +66,11 @@ function showPets() {
 function showBattlePass() {
   checkAndResetDailyTasks()
   currentScreen.value = 'battlePass'
+}
+
+function showShop() {
+  checkAndRefreshStock()
+  currentScreen.value = 'shop'
 }
 
 function goHome() {
@@ -134,6 +141,7 @@ onMounted(() => {
   loadHighScore()
   achievements.value = loadAchievements()
   checkAndResetDailyTasks()
+  checkAndRefreshStock()
   refreshUnclaimedBadge()
 })
 </script>
@@ -149,6 +157,7 @@ onMounted(() => {
       @show-camp="showCamp"
       @show-map="showMap"
       @show-battle-pass="showBattlePass"
+      @show-shop="showShop"
     />
     
     <GameCanvas
@@ -199,6 +208,12 @@ onMounted(() => {
       @restart="handleSettlementRestart"
       @back-to-map="handleSettlementBackToMap"
       @new-achievement="handleAchievement"
+    />
+
+    <ShopScreen
+      v-else-if="currentScreen === 'shop'"
+      @back="goHome"
+      @start-game="startGame"
     />
   </div>
 </template>

@@ -429,3 +429,70 @@ export interface SkinRunStats {
   bestScore: number
   totalDistance: number
 }
+
+export type ItemRarity = 'common' | 'rare' | 'epic' | 'legendary'
+export type ItemCategory = 'consumable' | 'permanent' | 'limited'
+export type ItemEffectType = 
+  | 'invincible_start' 
+  | 'double_coins' 
+  | 'magnet' 
+  | 'extra_life' 
+  | 'speed_boost_start'
+  | 'score_multiplier'
+  | 'slow_obstacles'
+  | 'coin_magnet_range'
+  | 'jump_boost_perm'
+  | 'base_speed_perm'
+  | 'extra_life_perm'
+
+export interface ShopItemEffect {
+  type: ItemEffectType
+  value: number
+  duration?: number
+  description: string
+}
+
+export interface ShopItem {
+  id: string
+  name: string
+  icon: string
+  description: string
+  category: ItemCategory
+  rarity: ItemRarity
+  basePrice: number
+  effects: ShopItemEffect[]
+  maxStock: number
+  isRefreshable: boolean
+  sortOrder: number
+}
+
+export interface ShopDiscount {
+  itemId: string
+  discountPercent: number
+  startTime: number
+  endTime: number
+}
+
+export interface ShopInventoryItem {
+  itemId: string
+  quantity: number
+}
+
+export interface ShopStockItem {
+  itemId: string
+  currentStock: number
+  lastRefreshed: number
+}
+
+export interface ShopState {
+  inventory: ShopInventoryItem[]
+  stock: ShopStockItem[]
+  discounts: ShopDiscount[]
+  lastShopRefresh: number
+  totalSpent: number
+  totalPurchased: number
+  equippedConsumables: string[]
+  activeRunEffects: ShopItemEffect[]
+}
+
+export type ShopTabType = 'featured' | 'consumables' | 'permanent' | 'inventory'

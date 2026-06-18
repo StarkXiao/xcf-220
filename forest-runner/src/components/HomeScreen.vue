@@ -5,6 +5,7 @@ defineEmits<{
   (e: 'showCamp'): void
   (e: 'showMap'): void
   (e: 'showBattlePass'): void
+  (e: 'showShop'): void
 }>()
 
 defineProps<{
@@ -66,6 +67,10 @@ defineProps<{
         <button class="btn btn-achievements" @click="$emit('showAchievements')">
           <span class="btn-icon">🏅</span>
           成就
+        </button>
+        <button class="btn btn-shop" @click="$emit('showShop')">
+          <span class="btn-icon">🏪</span>
+          商店
         </button>
       </div>
 
@@ -436,6 +441,21 @@ defineProps<{
 
 .btn-achievements:active {
   box-shadow: 0 2px 0 #CD853F, 0 4px 10px rgba(0,0,0,0.2);
+  transform: translateY(4px) scale(0.98);
+}
+
+.btn-shop {
+  background: linear-gradient(180deg, #E91E63 0%, #C2185B 100%);
+  color: white;
+  box-shadow: 0 6px 0 #880E4F, 0 8px 15px rgba(0,0,0,0.2);
+}
+
+.btn-shop:hover {
+  box-shadow: 0 8px 0 #880E4F, 0 10px 20px rgba(0,0,0,0.25);
+}
+
+.btn-shop:active {
+  box-shadow: 0 2px 0 #880E4F, 0 4px 10px rgba(0,0,0,0.2);
   transform: translateY(4px) scale(0.98);
 }
 

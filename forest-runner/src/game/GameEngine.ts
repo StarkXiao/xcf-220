@@ -24,6 +24,10 @@ import {
   addRunExpToPet
 } from './petStore'
 import { getEquippedSkinColors } from './battlePassStore'
+import {
+  getCombinedShopBuffs,
+  prepareRunEffects
+} from './shopStore'
 import type { SkinColorConfig } from './types'
 
 const GRAVITY = 0.6
@@ -124,11 +128,17 @@ export class GameEngine {
   }
 
   private applyBuffs(): void {
+    prepareRunEffects()
+    
     const campBuffs = getCombinedBuffs()
     const petBuffs = getCombinedPetBuffs()
+    const shopBuffs = getCombinedShopBuffs()
     
     this.buffs = { ...campBuffs }
     for (const [type, value] of Object.entries(petBuffs)) {
+      this.buffs[type] = (this.buffs[type] || 0) + value
+    }
+    for (const [type, value] of Object.entries(shopBuffs)) {
       this.buffs[type] = (this.buffs[type] || 0) + value
     }
     
@@ -385,6 +395,8 @@ export class GameEngine {
 
     const dt = deltaTime / 16.67
 
+    this.updateStartEffectTimers(dt)
+
     if (this.gameState.speed < this.gameState.maxSpeed) {
       this.gameState.speed += SPEED_INCREMENT * dt
     }
@@ -464,9 +476,12 @@ export class GameEngine {
   }
 
   private updateObstacles(dt: number): void {
+    const slowFactor = 1 - (this.buffs['slow_obstacles'] || 0)
+    const obstacleSpeed = this.gameState.speed * Math.max(0.3, slowFactor)
+    
     this.obstacles = this.obstacles.filter(obs => {
       if (!obs.active) return false
-      obs.x -= this.gameState.speed * dt
+      obs.x -= obstacleSpeed * dt
       return obs.x + obs.width > -50
     })
   }
@@ -694,7 +709,42 @@ export class GameEngine {
     this.gameState = this.createInitialState()
     this.achievements = loadAchievements()
     
+    this.applyStartEffects()
+    
     this.spawnInitialContent()
+  }
+
+  private applyStartEffects(): void {
+    const invincibleStart = this.buffs['invincible_start'] || 0
+    if (invincibleStart > 0) {
+      this.player.isInvincible = true
+      this.player.invincibleTimer = invincibleStart
+    }
+    
+    const speedBoostStart = this.buffs['speed_boost_start'] || 0
+    const speedBoostDuration = this.buffs['speed_boost_start_duration'] || 0
+    if (speedBoostStart > 0 && speedBoostDuration > 0) {
+      this.buffs['speed_boost_start_remaining'] = speedBoostDuration
+      this.buffs['speed_boost_start_value'] = speedBoostStart
+      this.gameState.speed = this.gameState.baseSpeed * (1 + speedBoostStart)
+      this.gameState.maxSpeed = this.gameState.maxSpeed * (1 + speedBoostStart)
+    }
+  }
+
+  private updateStartEffectTimers(dt: number): void {
+    if (this.buffs['speed_boost_start_remaining'] > 0) {
+      this.buffs['speed_boost_start_remaining'] -= dt
+      if (this.buffs['speed_boost_start_remaining'] <= 0) {
+        const speedBoostValue = this.buffs['speed_boost_start_value'] || 0
+        this.gameState.baseSpeed = this.gameState.baseSpeed / (1 + speedBoostValue)
+        this.gameState.maxSpeed = this.gameState.maxSpeed / (1 + speedBoostValue)
+        if (this.gameState.speed > this.gameState.maxSpeed) {
+          this.gameState.speed = this.gameState.maxSpeed
+        }
+        this.buffs['speed_boost_start_remaining'] = 0
+        this.buffs['speed_boost_start_value'] = 0
+      }
+    }
   }
 
   private createFollowPet(): FollowPet | null {
