@@ -11,6 +11,7 @@ defineEmits<{
   (e: 'showShop'): void
   (e: 'showCosmetic'): void
   (e: 'showCheckIn'): void
+  (e: 'showRanking'): void
 }>()
 
 const props = defineProps<{
@@ -102,6 +103,10 @@ const hasCheckedIn = computed(() => hasCheckedInToday())
         <button class="btn btn-cosmetic" @click="$emit('showCosmetic')">
           <span class="btn-icon">🎨</span>
           角色装扮
+        </button>
+        <button class="btn btn-ranking" @click="$emit('showRanking')">
+          <span class="btn-icon">🏆</span>
+          好友排行
         </button>
       </div>
 
@@ -623,6 +628,21 @@ const hasCheckedIn = computed(() => hasCheckedInToday())
 
 .btn-cosmetic:active {
   box-shadow: 0 2px 0 #4A148C, 0 4px 10px rgba(0,0,0,0.2);
+  transform: translateY(4px) scale(0.98);
+}
+
+.btn-ranking {
+  background: linear-gradient(180deg, #FF6B35 0%, #E65100 100%);
+  color: white;
+  box-shadow: 0 6px 0 #BF360C, 0 8px 15px rgba(0,0,0,0.2);
+}
+
+.btn-ranking:hover {
+  box-shadow: 0 8px 0 #BF360C, 0 10px 20px rgba(0,0,0,0.25);
+}
+
+.btn-ranking:active {
+  box-shadow: 0 2px 0 #BF360C, 0 4px 10px rgba(0,0,0,0.2);
   transform: translateY(4px) scale(0.98);
 }
 

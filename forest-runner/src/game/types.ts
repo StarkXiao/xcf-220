@@ -628,3 +628,76 @@ export interface CheckInCalendarDay {
   reward?: CheckInReward
   streakDay?: number
 }
+
+export type RankingTabType = 'friends' | 'global' | 'challenge'
+
+export interface FriendProfile {
+  id: string
+  name: string
+  avatar: string
+  level: number
+  highScore: number
+  lastActive: number
+}
+
+export interface RankingEntry {
+  rank: number
+  playerId: string
+  name: string
+  avatar: string
+  score: number
+  level: number
+  isSelf: boolean
+}
+
+export type ChallengeStatus = 'pending' | 'accepted' | 'in_progress' | 'completed' | 'expired' | 'declined'
+
+export interface ChallengeRecord {
+  id: string
+  challengerId: string
+  challengerName: string
+  challengerAvatar: string
+  challengerScore: number
+  targetId: string
+  targetName: string
+  targetAvatar: string
+  targetScore: number
+  status: ChallengeStatus
+  createdAt: number
+  expiresAt: number
+  completedAt: number | null
+  winnerId: string | null
+}
+
+export interface ChallengeReward {
+  coins: number
+  battlePassPoints: number
+  title?: string
+}
+
+export interface ChallengeResult {
+  challengeId: string
+  won: boolean
+  myScore: number
+  opponentScore: number
+  opponentName: string
+  opponentAvatar: string
+  rewards: ChallengeReward
+  newRating: number
+}
+
+export interface RankingState {
+  myRating: number
+  myRank: number
+  friends: FriendProfile[]
+  friendRanking: RankingEntry[]
+  globalRanking: RankingEntry[]
+  outgoingChallenges: ChallengeRecord[]
+  incomingChallenges: ChallengeRecord[]
+  challengeHistory: ChallengeRecord[]
+  lastChallengeResult: ChallengeResult | null
+  lastScoreUpload: number
+  pendingRewardChallengeIds: string[]
+}
+
+export type RankingScreenType = 'ranking' | 'challengeSettlement'

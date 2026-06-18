@@ -12,6 +12,8 @@ import ShopScreen from './components/ShopScreen.vue'
 import CosmeticScreen from './components/CosmeticScreen.vue'
 import CheckInModal from './components/CheckInModal.vue'
 import CheckInFloat from './components/CheckInFloat.vue'
+import RankingScreen from './components/RankingScreen.vue'
+import ChallengeSettlement from './components/ChallengeSettlement.vue'
 import { loadAchievements } from './game/achievements'
 import { addRunRewards } from './game/campStore'
 import type { Achievement, ResourceType, ChapterRunResult, CheckInReward } from './game/types'
@@ -20,8 +22,9 @@ import { recordRunStats, checkAndResetDailyTasks, hasAnyUnclaimed } from './game
 import { checkAndRefreshStock } from './game/shopStore'
 import { checkCosmeticUnlocks } from './game/cosmeticStore'
 import { hasUnclaimedRewards as hasCheckInUnclaimed } from './game/checkInStore'
+import { uploadScore, getUnclaimedChallengeCount } from './game/rankingStore'
 
-type GameScreen = 'home' | 'game' | 'achievements' | 'camp' | 'map' | 'chapterSettlement' | 'pet' | 'battlePass' | 'shop' | 'cosmetic'
+type GameScreen = 'home' | 'game' | 'achievements' | 'camp' | 'map' | 'chapterSettlement' | 'pet' | 'battlePass' | 'shop' | 'cosmetic' | 'ranking' | 'challengeSettlement'
 
 const currentScreen = ref<GameScreen>('home')
 const highScore = ref(0)
@@ -41,7 +44,7 @@ function loadHighScore() {
 }
 
 function refreshUnclaimedBadge() {
-  hasUnclaimedBadge.value = hasAnyUnclaimed() || hasCheckInUnclaimed()
+  hasUnclaimedBadge.value = hasAnyUnclaimed() || hasCheckInUnclaimed() || getUnclaimedChallengeCount() > 0
 }
 
 function openCheckInModal() {
@@ -96,6 +99,14 @@ function showCosmetic() {
   currentScreen.value = 'cosmetic'
 }
 
+function showRanking() {
+  currentScreen.value = 'ranking'
+}
+
+function showChallengeSettlement() {
+  currentScreen.value = 'challengeSettlement'
+}
+
 function goHome() {
   currentScreen.value = 'home'
   isPlaying.value = false
@@ -115,6 +126,7 @@ function handleGameOver(
     highScore.value = score
   }
   addRunRewards(coins, resources)
+  uploadScore(score)
 
   const area = getCurrentArea()
   if (area) {
@@ -183,6 +195,7 @@ onMounted(() => {
       @show-shop="showShop"
       @show-cosmetic="showCosmetic"
       @show-check-in="openCheckInModal"
+      @show-ranking="showRanking"
     />
 
     <CheckInFloat
@@ -256,6 +269,20 @@ onMounted(() => {
     <CosmeticScreen
       v-else-if="currentScreen === 'cosmetic'"
       @back="goHome"
+      @start-game="startGame"
+    />
+
+    <RankingScreen
+      v-else-if="currentScreen === 'ranking'"
+      @back="goHome"
+      @show-settlement="showChallengeSettlement"
+      @start-game="startGame"
+    />
+
+    <ChallengeSettlement
+      v-else-if="currentScreen === 'challengeSettlement'"
+      @back="goHome"
+      @back-to-ranking="showRanking"
       @start-game="startGame"
     />
   </div>
