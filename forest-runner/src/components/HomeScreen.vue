@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { getCheckInStats, hasCheckedInToday, canCheckInToday } from '../game/checkInStore'
+
 defineEmits<{
   (e: 'start'): void
   (e: 'showAchievements'): void
@@ -7,12 +10,17 @@ defineEmits<{
   (e: 'showBattlePass'): void
   (e: 'showShop'): void
   (e: 'showCosmetic'): void
+  (e: 'showCheckIn'): void
 }>()
 
-defineProps<{
+const props = defineProps<{
   highScore: number
   hasUnclaimed?: boolean
 }>()
+
+const checkInStats = computed(() => getCheckInStats())
+const canCheckIn = computed(() => canCheckInToday())
+const hasCheckedIn = computed(() => hasCheckedInToday())
 </script>
 
 <template>
@@ -26,6 +34,24 @@ defineProps<{
         </div>
         <div class="bp-entry-arrow">
           <span v-if="hasUnclaimed" class="bp-entry-badge">!</span>
+          <span class="arrow-icon">›</span>
+        </div>
+      </div>
+
+      <div class="check-in-entry" @click="$emit('showCheckIn')">
+        <div class="ci-entry-icon">✋</div>
+        <div class="ci-entry-info">
+          <div class="ci-entry-title">每日签到</div>
+          <div class="ci-entry-subtitle">
+            <span v-if="canCheckIn">今天还没签到，点击领取奖励</span>
+            <span v-else>已连续签到 <strong>{{ checkInStats.currentStreak }}</strong> 天</span>
+          </div>
+        </div>
+        <div class="ci-entry-arrow">
+          <span v-if="canCheckIn" class="ci-entry-badge">
+            <span class="badge-dot"></span>
+          </span>
+          <span class="ci-status" v-else-if="hasCheckedIn">✓</span>
           <span class="arrow-icon">›</span>
         </div>
       </div>
@@ -177,6 +203,127 @@ defineProps<{
 
 .battle-pass-entry:active {
   transform: translateY(-1px);
+}
+
+.check-in-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  border-radius: 18px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.check-in-entry::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.6s;
+}
+
+.check-in-entry:hover::before {
+  left: 100%;
+}
+
+.check-in-entry:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(249, 115, 22, 0.5);
+}
+
+.check-in-entry:active {
+  transform: translateY(-1px);
+}
+
+.ci-entry-icon {
+  font-size: 34px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  animation: handWave 1.5s ease-in-out infinite;
+}
+
+@keyframes handWave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(15deg); }
+  75% { transform: rotate(-10deg); }
+}
+
+.ci-entry-info {
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+}
+
+.ci-entry-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  margin-bottom: 2px;
+}
+
+.ci-entry-subtitle {
+  font-size: 12px;
+  color: rgba(255,255,255,0.9);
+  font-weight: 500;
+}
+
+.ci-entry-subtitle strong {
+  color: #fef08a;
+  font-size: 14px;
+}
+
+.ci-entry-arrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.ci-entry-badge {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badge-dot {
+  width: 12px;
+  height: 12px;
+  background: #FF4444;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(255,68,68,0.5);
+  animation: badgePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(255,68,68,0.5); }
+  50% { transform: scale(1.2); box-shadow: 0 4px 14px rgba(255,68,68,0.7); }
+}
+
+.ci-status {
+  width: 24px;
+  height: 24px;
+  background: #22c55e;
+  border-radius: 50%;
+  color: white;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(34,197,94,0.5);
 }
 
 .bp-entry-icon {

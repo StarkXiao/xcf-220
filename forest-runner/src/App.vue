@@ -10,13 +10,16 @@ import PetScreen from './components/PetScreen.vue'
 import BattlePassScreen from './components/BattlePassScreen.vue'
 import ShopScreen from './components/ShopScreen.vue'
 import CosmeticScreen from './components/CosmeticScreen.vue'
+import CheckInModal from './components/CheckInModal.vue'
+import CheckInFloat from './components/CheckInFloat.vue'
 import { loadAchievements } from './game/achievements'
 import { addRunRewards } from './game/campStore'
-import type { Achievement, ResourceType, ChapterRunResult } from './game/types'
+import type { Achievement, ResourceType, ChapterRunResult, CheckInReward } from './game/types'
 import { completeRun, getCurrentArea } from './game/chapterStore'
 import { recordRunStats, checkAndResetDailyTasks, hasAnyUnclaimed } from './game/battlePassStore'
 import { checkAndRefreshStock } from './game/shopStore'
 import { checkCosmeticUnlocks } from './game/cosmeticStore'
+import { hasUnclaimedRewards as hasCheckInUnclaimed } from './game/checkInStore'
 
 type GameScreen = 'home' | 'game' | 'achievements' | 'camp' | 'map' | 'chapterSettlement' | 'pet' | 'battlePass' | 'shop' | 'cosmetic'
 
@@ -26,6 +29,7 @@ const achievements = ref<Achievement[]>([])
 const isPlaying = ref(false)
 const chapterRunResult = ref<ChapterRunResult | null>(null)
 const hasUnclaimedBadge = ref(false)
+const showCheckInModal = ref(false)
 
 function loadHighScore() {
   try {
@@ -37,7 +41,19 @@ function loadHighScore() {
 }
 
 function refreshUnclaimedBadge() {
-  hasUnclaimedBadge.value = hasAnyUnclaimed()
+  hasUnclaimedBadge.value = hasAnyUnclaimed() || hasCheckInUnclaimed()
+}
+
+function openCheckInModal() {
+  showCheckInModal.value = true
+}
+
+function closeCheckInModal() {
+  showCheckInModal.value = false
+}
+
+function handleCheckInSuccess(_rewards: CheckInReward[]) {
+  refreshUnclaimedBadge()
 }
 
 function startGame() {
@@ -166,6 +182,19 @@ onMounted(() => {
       @show-battle-pass="showBattlePass"
       @show-shop="showShop"
       @show-cosmetic="showCosmetic"
+      @show-check-in="openCheckInModal"
+    />
+
+    <CheckInFloat
+      v-if="currentScreen === 'home'"
+      @open-modal="openCheckInModal"
+      @check-in-success="handleCheckInSuccess"
+    />
+
+    <CheckInModal
+      v-if="showCheckInModal"
+      @close="closeCheckInModal"
+      @check-in-success="handleCheckInSuccess"
     />
     
     <GameCanvas

@@ -567,3 +567,64 @@ export interface CosmeticPreviewConfig {
 }
 
 export type CosmeticTabType = 'all' | CosmeticCategory
+
+export interface CheckInReward {
+  id: string
+  day: number
+  type: 'coin' | 'resource' | 'battle_pass_points'
+  amount: number
+  resourceType?: AllResourceType
+  icon: string
+  name: string
+  isBonus?: boolean
+}
+
+export interface CheckInRecord {
+  date: string
+  checkedIn: boolean
+  isSupplementary?: boolean
+}
+
+export interface CheckInMonthData {
+  year: number
+  month: number
+  records: CheckInRecord[]
+}
+
+export interface CheckInArchiveEntry {
+  month: string
+  totalDays: number
+  checkedDays: number
+  maxStreak: number
+  rewardsClaimed: string[]
+}
+
+export interface CheckInState {
+  currentStreak: number
+  maxStreak: number
+  totalCheckedDays: number
+  lastCheckInDate: string | null
+  monthlyData: CheckInMonthData[]
+  claimedRewards: string[]
+  archive: CheckInArchiveEntry[]
+  supplementaryCost: number
+  maxSupplementaryPerMonth: number
+  usedSupplementaryThisMonth: number
+  showFloatOnHome: boolean
+  lastFloatDismissDate: string | null
+}
+
+export interface CheckInCalendarDay {
+  date: string
+  day: number
+  isToday: boolean
+  isPast: boolean
+  isFuture: boolean
+  isCurrentMonth: boolean
+  checkedIn: boolean
+  isSupplementary?: boolean
+  canCheckIn: boolean
+  canSupplement: boolean
+  reward?: CheckInReward
+  streakDay?: number
+}
