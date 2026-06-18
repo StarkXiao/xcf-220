@@ -7,7 +7,8 @@ import type {
   GameState,
   ResourceType,
   ChapterTheme,
-  AreaNode
+  AreaNode,
+  FollowPet
 } from './types'
 import { GameRenderer } from './renderer'
 import { checkCollision, randomRange, randomInt } from './utils'
@@ -17,6 +18,11 @@ import { RESOURCE_DROP_CONFIG } from './campData'
 import { getCombinedBuffs } from './campStore'
 import { THEMES, selectThemedObstacleType, DEFAULT_OBSTACLE_SIZES } from './chapterData'
 import { getCurrentArea } from './chapterStore'
+import {
+  getCombinedPetBuffs,
+  getEquippedPetInfo,
+  addRunExpToPet
+} from './petStore'
 
 const GRAVITY = 0.6
 const BASE_JUMP_FORCE = -14
@@ -64,6 +70,7 @@ export class GameEngine {
   private height: number = 0
 
   private player: Player
+  private followPet: FollowPet | null = null
   private obstacles: Obstacle[] = []
   private collectibles: Collectible[] = []
   private clouds: Cloud[] = []
@@ -113,7 +120,14 @@ export class GameEngine {
   }
 
   private applyBuffs(): void {
-    this.buffs = getCombinedBuffs()
+    const campBuffs = getCombinedBuffs()
+    const petBuffs = getCombinedPetBuffs()
+    
+    this.buffs = { ...campBuffs }
+    for (const [type, value] of Object.entries(petBuffs)) {
+      this.buffs[type] = (this.buffs[type] || 0) + value
+    }
+    
     this.extraLives = Math.floor(this.buffs['extra_life'] || 0)
   }
 
@@ -365,10 +379,12 @@ export class GameEngine {
       this.gameState.speed += SPEED_INCREMENT * dt
     }
 
+    const scoreMultiplier = 1 + (this.buffs['score_multiplier'] || 0)
     this.gameState.distance += this.gameState.speed * 0.1 * dt
-    this.gameState.score += this.gameState.speed * 0.2 * dt
+    this.gameState.score += this.gameState.speed * 0.2 * dt * scoreMultiplier
 
     this.updatePlayer(dt)
+    this.updateFollowPet(dt)
     this.updateObstacles(dt)
     this.updateCollectibles(dt)
     this.updateClouds(dt)
@@ -470,6 +486,46 @@ export class GameEngine {
     })
   }
 
+  private updateFollowPet(dt: number): void {
+    if (!this.followPet) return
+
+    const petInfo = getEquippedPetInfo()
+    if (!petInfo) {
+      this.followPet = null
+      return
+    }
+
+    this.followPet.targetX = this.player.x - 55
+    this.followPet.targetY = this.player.y + this.player.height - this.followPet.height - 5
+
+    const followSpeed = 0.12
+    this.followPet.x += (this.followPet.targetX - this.followPet.x) * followSpeed * dt
+    this.followPet.y += (this.followPet.targetY - this.followPet.y) * followSpeed * dt
+
+    this.followPet.floatOffset = Math.sin(Date.now() / 300) * 3
+
+    this.followPet.animTimer += dt
+    if (this.followPet.animTimer > 6) {
+      this.followPet.animFrame++
+      this.followPet.animTimer = 0
+    }
+
+    const magnetRange = this.buffs['magnet_range'] || 0
+    if (magnetRange > 0) {
+      for (const col of this.collectibles) {
+        if (!col.active || col.collected) continue
+        const dx = (this.followPet.x + this.followPet.width / 2) - (col.x + col.width / 2)
+        const dy = (this.followPet.y + this.followPet.height / 2) - (col.y + col.height / 2)
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < magnetRange && dist > 0) {
+          const force = (magnetRange - dist) / magnetRange * 2
+          col.x += (dx / dist) * force * dt
+          col.y += (dy / dist) * force * dt
+        }
+      }
+    }
+  }
+
   private checkCollisions(): void {
     if (!this.player.isInvincible) {
       for (const obs of this.obstacles) {
@@ -546,6 +602,8 @@ export class GameEngine {
       this.saveHighScore(this.gameState.highScore)
     }
 
+    addRunExpToPet(Math.floor(this.gameState.score))
+
     if (this.onGameOverCallback) {
       this.onGameOverCallback(
         Math.floor(this.gameState.score),
@@ -575,6 +633,10 @@ export class GameEngine {
     } : null)
     this.renderer.drawCollectibles(this.collectibles)
     this.renderer.drawPlayer(this.player)
+    if (this.followPet) {
+      const petInfo = getEquippedPetInfo()
+      this.renderer.drawFollowPet(this.followPet, petInfo)
+    }
     this.renderer.drawParticles(this.particles)
     this.renderer.drawUI(
       this.gameState.score,
@@ -608,6 +670,7 @@ export class GameEngine {
 
   reset(): void {
     this.player = this.createPlayer()
+    this.followPet = this.createFollowPet()
     this.obstacles = []
     this.collectibles = []
     this.particles = []
@@ -620,6 +683,25 @@ export class GameEngine {
     this.achievements = loadAchievements()
     
     this.spawnInitialContent()
+  }
+
+  private createFollowPet(): FollowPet | null {
+    const petInfo = getEquippedPetInfo()
+    if (!petInfo) return null
+
+    const groundY = this.height * 0.75
+    return {
+      petId: petInfo.id,
+      x: this.player.x - 60,
+      y: groundY - 45,
+      width: 40,
+      height: 40,
+      animFrame: 0,
+      animTimer: 0,
+      floatOffset: 0,
+      targetX: this.player.x - 60,
+      targetY: groundY - 45
+    }
   }
 
   private setupChapterContext(): void {

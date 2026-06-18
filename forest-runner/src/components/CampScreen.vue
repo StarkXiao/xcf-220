@@ -24,6 +24,7 @@ import type {
 const emit = defineEmits<{
   (e: 'back'): void
   (e: 'startGame'): void
+  (e: 'showPets'): void
 }>()
 
 type TabType = 'overview' | 'buildings' | 'processing' | 'buffs'
@@ -255,6 +256,10 @@ onUnmounted(() => {
             <button class="btn btn-start-game" @click="$emit('startGame')">
               <span class="btn-icon">🎮</span>
               开始跑酷收集资源
+            </button>
+            <button class="btn btn-pet" @click="$emit('showPets')">
+              <span class="btn-icon">🐾</span>
+              宠物伙伴
             </button>
           </div>
         </div>
@@ -632,6 +637,13 @@ onUnmounted(() => {
   justify-content: center;
 }
 
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
 .btn-start-game {
   background: linear-gradient(180deg, #FF6B6B, #EE5A5A);
   color: white;
@@ -655,6 +667,31 @@ onUnmounted(() => {
 .btn-start-game:active {
   transform: translateY(2px);
   box-shadow: 0 2px 0 #CC4444;
+}
+
+.btn-pet {
+  background: linear-gradient(180deg, #9C27B0, #7B1FA2);
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 0 #6A1B9A;
+  transition: all 0.2s;
+}
+
+.btn-pet:hover {
+  transform: translateY(-2px);
+}
+
+.btn-pet:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #6A1B9A;
 }
 
 .buildings-list {

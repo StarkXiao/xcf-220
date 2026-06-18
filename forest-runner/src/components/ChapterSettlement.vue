@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import type { ChapterRunResult, AreaNode, Chapter } from '../game/types'
+import type { ChapterRunResult, AreaNode, Chapter, PetRunContribution } from '../game/types'
 import {
   getChapterById,
   getAreaById,
@@ -11,6 +11,9 @@ import {
 import { RESOURCES } from '../game/campData'
 import type { AllResourceType, ResourceType, Achievement } from '../game/types'
 import { checkChapterAchievements, loadAchievements } from '../game/achievements'
+import {
+  calculatePetRunContribution
+} from '../game/petStore'
 
 const emit = defineEmits<{
   (e: 'continue'): void
@@ -89,6 +92,15 @@ const chapterBonusResources = computed(() => {
 const canClaimChapterBonus = computed(() => {
   if (!chapter.value?.completed) return false
   return !isChapterBonusClaimed(chapter.value.id)
+})
+
+const petContribution = computed<PetRunContribution | null>(() => {
+  if (!result.value) return null
+  return calculatePetRunContribution(
+    result.value.coins,
+    result.value.score,
+    result.value.resources
+  )
 })
 
 function handleContinue() {
@@ -256,6 +268,38 @@ onMounted(() => {
               <span class="res-icon">{{ res.info?.icon }}</span>
               <span class="res-name">{{ res.info?.name }}</span>
               <span class="res-amount">+{{ res.amount }}</span>
+            </div>
+          </div>
+
+          <div v-if="petContribution" class="pet-contribution">
+            <div class="pet-contribution-header">
+              <span class="pet-contribution-icon">{{ petContribution.petIcon }}</span>
+              <div class="pet-contribution-info">
+                <span class="pet-contribution-name">{{ petContribution.petName }}</span>
+                <span class="pet-contribution-label">宠物加成</span>
+              </div>
+            </div>
+            <div class="pet-bonus-list">
+              <div v-if="petContribution.bonusCoins > 0" class="pet-bonus-item">
+                <span class="bonus-icon">💰</span>
+                <span class="bonus-text">金币</span>
+                <span class="bonus-value">+{{ petContribution.bonusCoins }}</span>
+              </div>
+              <div v-if="petContribution.bonusScore > 0" class="pet-bonus-item">
+                <span class="bonus-icon">⭐</span>
+                <span class="bonus-text">得分</span>
+                <span class="bonus-value">+{{ petContribution.bonusScore }}</span>
+              </div>
+              <div
+                v-for="(amount, type) in petContribution.bonusResources"
+                :key="type"
+                v-show="amount && amount > 0"
+                class="pet-bonus-item"
+              >
+                <span class="bonus-icon">{{ RESOURCES[type as ResourceType]?.icon }}</span>
+                <span class="bonus-text">{{ RESOURCES[type as ResourceType]?.name }}</span>
+                <span class="bonus-value">+{{ amount }}</span>
+              </div>
             </div>
           </div>
 
@@ -758,6 +802,79 @@ onMounted(() => {
 
 .coin-item .res-amount {
   color: #b8860b;
+}
+
+.pet-contribution {
+  margin-top: 12px;
+  padding: 12px;
+  background: linear-gradient(135deg, #f3e5f5, #e1bee7);
+  border-radius: 12px;
+  border: 2px solid #ce93d8;
+}
+
+.pet-contribution-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.pet-contribution-icon {
+  font-size: 36px;
+}
+
+.pet-contribution-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pet-contribution-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #6a1b9a;
+}
+
+.pet-contribution-label {
+  font-size: 12px;
+  color: #9c27b0;
+  font-weight: 500;
+}
+
+.pet-bonus-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.pet-bonus-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.bonus-icon {
+  font-size: 18px;
+}
+
+.bonus-text {
+  flex: 1;
+  font-size: 12px;
+  color: #666;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bonus-value {
+  font-size: 13px;
+  font-weight: bold;
+  color: #6a1b9a;
+  flex-shrink: 0;
 }
 
 .bonus-rewards {

@@ -6,12 +6,13 @@ import AchievementsScreen from './components/AchievementsScreen.vue'
 import CampScreen from './components/CampScreen.vue'
 import MapScreen from './components/MapScreen.vue'
 import ChapterSettlement from './components/ChapterSettlement.vue'
+import PetScreen from './components/PetScreen.vue'
 import { loadAchievements } from './game/achievements'
 import { addRunRewards } from './game/campStore'
 import type { Achievement, ResourceType, ChapterRunResult } from './game/types'
 import { completeRun, getCurrentArea } from './game/chapterStore'
 
-type GameScreen = 'home' | 'game' | 'achievements' | 'camp' | 'map' | 'chapterSettlement'
+type GameScreen = 'home' | 'game' | 'achievements' | 'camp' | 'map' | 'chapterSettlement' | 'pet'
 
 const currentScreen = ref<GameScreen>('home')
 const highScore = ref(0)
@@ -47,6 +48,10 @@ function showCamp() {
 
 function showMap() {
   currentScreen.value = 'map'
+}
+
+function showPets() {
+  currentScreen.value = 'pet'
 }
 
 function goHome() {
@@ -143,6 +148,7 @@ onMounted(() => {
       v-else-if="currentScreen === 'camp'"
       @back="goHome"
       @start-game="startGame"
+      @show-pets="showPets"
     />
 
     <MapScreen
@@ -150,6 +156,12 @@ onMounted(() => {
       @back="goHome"
       @start-game="startGame"
       @show-achievements="showAchievements"
+    />
+
+    <PetScreen
+      v-else-if="currentScreen === 'pet'"
+      @back="showCamp"
+      @start-game="startGame"
     />
 
     <ChapterSettlement

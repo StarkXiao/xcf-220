@@ -1,4 +1,4 @@
-import type { Player, Obstacle, Collectible, Cloud, Particle, ResourceType, ThemeConfig } from './types'
+import type { Player, Obstacle, Collectible, Cloud, Particle, ResourceType, ThemeConfig, FollowPet, Pet } from './types'
 
 const COLORS = {
   skyTop: '#87CEEB',
@@ -582,6 +582,85 @@ export class GameRenderer {
         this.ctx.fill()
         break
     }
+  }
+
+  drawFollowPet(pet: FollowPet, petInfo: Pet | null): void {
+    if (!petInfo) return
+
+    const { x, y, width, height, floatOffset, animFrame } = pet
+    const cx = x + width / 2
+    const cy = y + height / 2 + floatOffset
+    const bounce = Math.sin(animFrame * 0.5) * 2
+
+    const glow = this.ctx.createRadialGradient(cx, cy, 0, cx, cy, width * 1.2)
+    glow.addColorStop(0, petInfo.color + '44')
+    glow.addColorStop(1, petInfo.color + '00')
+    this.ctx.fillStyle = glow
+    this.ctx.beginPath()
+    this.ctx.arc(cx, cy, width * 1.2, 0, Math.PI * 2)
+    this.ctx.fill()
+
+    this.ctx.fillStyle = petInfo.color
+    this.ctx.beginPath()
+    this.ctx.ellipse(cx, cy + 5 + bounce, width / 2 - 3, height / 2 - 5, 0, 0, Math.PI * 2)
+    this.ctx.fill()
+
+    this.ctx.fillStyle = petInfo.color
+    this.ctx.beginPath()
+    this.ctx.arc(cx, cy - height / 4 + bounce, width / 2.5, 0, Math.PI * 2)
+    this.ctx.fill()
+
+    this.ctx.fillStyle = petInfo.secondaryColor
+    this.ctx.beginPath()
+    this.ctx.ellipse(cx, cy + 8 + bounce, width / 3, height / 4, 0, 0, Math.PI * 2)
+    this.ctx.fill()
+
+    this.ctx.fillStyle = '#333'
+    this.ctx.beginPath()
+    this.ctx.arc(cx - 6, cy - height / 4 - 2 + bounce, 3, 0, Math.PI * 2)
+    this.ctx.arc(cx + 6, cy - height / 4 - 2 + bounce, 3, 0, Math.PI * 2)
+    this.ctx.fill()
+
+    this.ctx.fillStyle = '#FFF'
+    this.ctx.beginPath()
+    this.ctx.arc(cx - 5, cy - height / 4 - 3 + bounce, 1.5, 0, Math.PI * 2)
+    this.ctx.arc(cx + 7, cy - height / 4 - 3 + bounce, 1.5, 0, Math.PI * 2)
+    this.ctx.fill()
+
+    this.ctx.fillStyle = '#333'
+    this.ctx.beginPath()
+    this.ctx.ellipse(cx, cy - height / 4 + 4 + bounce, 3, 2, 0, 0, Math.PI * 2)
+    this.ctx.fill()
+
+    this.ctx.fillStyle = petInfo.color
+    this.ctx.beginPath()
+    this.ctx.moveTo(cx - width / 3, cy - height / 3 + bounce)
+    this.ctx.lineTo(cx - width / 4, cy - height / 2 - 5 + bounce)
+    this.ctx.lineTo(cx - width / 6, cy - height / 3 + bounce)
+    this.ctx.closePath()
+    this.ctx.fill()
+
+    this.ctx.beginPath()
+    this.ctx.moveTo(cx + width / 3, cy - height / 3 + bounce)
+    this.ctx.lineTo(cx + width / 4, cy - height / 2 - 5 + bounce)
+    this.ctx.lineTo(cx + width / 6, cy - height / 3 + bounce)
+    this.ctx.closePath()
+    this.ctx.fill()
+
+    this.ctx.fillStyle = petInfo.secondaryColor
+    this.ctx.beginPath()
+    this.ctx.moveTo(cx - width / 4, cy - height / 3 + bounce)
+    this.ctx.lineTo(cx - width / 5, cy - height / 2.5 + bounce)
+    this.ctx.lineTo(cx - width / 7, cy - height / 3 + bounce)
+    this.ctx.closePath()
+    this.ctx.fill()
+
+    this.ctx.beginPath()
+    this.ctx.moveTo(cx + width / 4, cy - height / 3 + bounce)
+    this.ctx.lineTo(cx + width / 5, cy - height / 2.5 + bounce)
+    this.ctx.lineTo(cx + width / 7, cy - height / 3 + bounce)
+    this.ctx.closePath()
+    this.ctx.fill()
   }
 
   drawParticles(particles: Particle[]): void {

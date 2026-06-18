@@ -253,3 +253,85 @@ export interface ExtendedGameState extends GameState {
   theme?: ChapterTheme
   targetDistance?: number
 }
+
+export type PetRarity = 'common' | 'rare' | 'epic' | 'legendary'
+export type PetSkillType = 'coin_bonus' | 'resource_bonus' | 'magnet' | 'shield' | 'speed_aura' | 'score_multiplier'
+
+export interface PetSkill {
+  type: PetSkillType
+  value: number
+  description: string
+}
+
+export interface Pet {
+  id: string
+  name: string
+  icon: string
+  description: string
+  rarity: PetRarity
+  skills: PetSkill[]
+  color: string
+  secondaryColor: string
+  unlockCondition: string
+}
+
+export interface PetInstance {
+  petId: string
+  level: number
+  exp: number
+  equipped: boolean
+  unlockedAt: number
+}
+
+export interface PetEgg {
+  id: string
+  name: string
+  icon: string
+  rarity: PetRarity
+  possiblePets: string[]
+  hatchTime: number
+  cost: Partial<Record<AllResourceType, number>>
+}
+
+export interface HatchingEgg {
+  eggId: string
+  startTime: number
+  duration: number
+  completed: boolean
+  claimed: boolean
+}
+
+export interface PetCollectionEntry {
+  petId: string
+  unlocked: boolean
+  firstUnlockedAt?: number
+  totalExp: number
+}
+
+export interface PetState {
+  pets: PetInstance[]
+  eggs: PetEgg[]
+  hatchingEggs: HatchingEgg[]
+  collection: Record<string, PetCollectionEntry>
+  equippedPetId: string | null
+  lastHatchedPetId: string | null
+}
+
+export interface FollowPet extends Position, Size {
+  petId: string
+  animFrame: number
+  animTimer: number
+  floatOffset: number
+  targetX: number
+  targetY: number
+}
+
+export interface PetRunContribution {
+  petId: string
+  petName: string
+  petIcon: string
+  bonusCoins: number
+  bonusResources: Partial<Record<ResourceType, number>>
+  bonusScore: number
+  skillsActivated: string[]
+}
