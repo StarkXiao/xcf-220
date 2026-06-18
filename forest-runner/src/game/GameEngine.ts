@@ -1,18 +1,29 @@
-import type { Player, Obstacle, Collectible, Cloud, Particle, GameState } from './types'
+import type {
+  Player,
+  Obstacle,
+  Collectible,
+  Cloud,
+  Particle,
+  GameState,
+  ResourceType
+} from './types'
 import { GameRenderer } from './renderer'
 import { checkCollision, randomRange, randomInt } from './utils'
 import { checkAchievements, loadAchievements } from './achievements'
 import type { Achievement } from './types'
+import { selectRandomResource, RESOURCE_DROP_CONFIG } from './campData'
+import { getCombinedBuffs } from './campStore'
 
 const GRAVITY = 0.6
-const JUMP_FORCE = -14
-const DOUBLE_JUMP_FORCE = -12
+const BASE_JUMP_FORCE = -14
+const BASE_DOUBLE_JUMP_FORCE = -12
 const PLAYER_WIDTH = 50
 const PLAYER_HEIGHT = 70
 const BASE_SPEED = 6
-const MAX_SPEED = 14
+const BASE_MAX_SPEED = 14
 const SPEED_INCREMENT = 0.003
 const HIGH_SCORE_KEY = 'forest-runner-highscore'
+const BASE_INVINCIBLE_DURATION = 180
 
 const OBSTACLE_MIN_INTERVAL = 45
 const OBSTACLE_MAX_INTERVAL = 90
@@ -44,7 +55,16 @@ export class GameEngine {
   private collectibleTimer: number = 0
   private cloudTimer: number = 0
 
-  private onGameOverCallback?: (score: number, coins: number, distance: number) => void
+  private collectedResources: Partial<Record<ResourceType, number>> = {}
+  private buffs: Record<string, number> = {}
+  private extraLives: number = 0
+
+  private onGameOverCallback?: (
+    score: number,
+    coins: number,
+    distance: number,
+    resources: Partial<Record<ResourceType, number>>
+  ) => void
   private onAchievementUnlock?: (achievement: Achievement) => void
 
   constructor(canvas: HTMLCanvasElement) {
@@ -62,6 +82,11 @@ export class GameEngine {
 
     this.initClouds()
     this.bindEvents()
+  }
+
+  private applyBuffs(): void {
+    this.buffs = getCombinedBuffs()
+    this.extraLives = Math.floor(this.buffs['extra_life'] || 0)
   }
 
   private resize(): void {
@@ -93,6 +118,7 @@ export class GameEngine {
 
   private createInitialState(): GameState {
     const highScore = this.loadHighScore()
+    const speedBoost = 1 + (this.buffs['speed_boost'] || 0)
     return {
       score: 0,
       coins: 0,
@@ -101,9 +127,9 @@ export class GameEngine {
       isRunning: false,
       isGameOver: false,
       isPaused: false,
-      speed: BASE_SPEED,
-      baseSpeed: BASE_SPEED,
-      maxSpeed: MAX_SPEED
+      speed: BASE_SPEED * speedBoost,
+      baseSpeed: BASE_SPEED * speedBoost,
+      maxSpeed: BASE_MAX_SPEED * speedBoost
     }
   }
 
@@ -159,13 +185,14 @@ export class GameEngine {
   jump(): void {
     if (!this.gameState.isRunning || this.gameState.isGameOver || this.gameState.isPaused) return
 
+    const jumpBoost = 1 + (this.buffs['jump_boost'] || 0)
     if (this.player.jumpCount === 0) {
-      this.player.velocityY = JUMP_FORCE
+      this.player.velocityY = BASE_JUMP_FORCE * jumpBoost
       this.player.isJumping = true
       this.player.jumpCount = 1
       this.createJumpParticles()
     } else if (this.player.jumpCount === 1) {
-      this.player.velocityY = DOUBLE_JUMP_FORCE
+      this.player.velocityY = BASE_DOUBLE_JUMP_FORCE * jumpBoost
       this.player.isDoubleJumping = true
       this.player.jumpCount = 2
       this.createJumpParticles()
@@ -245,28 +272,42 @@ export class GameEngine {
   }
 
   private spawnCollectible(): void {
-    const types: Collectible['type'][] = ['coin', 'coin', 'coin', 'star', 'potion']
-    const type = types[randomInt(0, types.length - 1)]
+    const resourceBoost = 1 + (this.buffs['resource_boost'] || 0)
+    const resourceChance = 0.35 * resourceBoost
+    const isResource = Math.random() < resourceChance
+
+    let type: Collectible['type']
+    if (isResource) {
+      type = selectRandomResource(resourceBoost)
+    } else {
+      const types: Collectible['type'][] = ['coin', 'coin', 'coin', 'star', 'potion']
+      type = types[randomInt(0, types.length - 1)]
+    }
     
     let value: number
     let size: number
 
-    switch (type) {
-      case 'coin':
-        value = 1
-        size = 30
-        break
-      case 'star':
-        value = 10
-        size = 35
-        break
-      case 'potion':
-        value = 0
-        size = 35
-        break
-      default:
-        value = 1
-        size = 30
+    if (type === 'coin' || type === 'star' || type === 'potion') {
+      switch (type) {
+        case 'coin':
+          value = 1
+          size = 30
+          break
+        case 'star':
+          value = 10
+          size = 35
+          break
+        case 'potion':
+          value = 0
+          size = 35
+          break
+        default:
+          value = 1
+          size = 30
+      }
+    } else {
+      value = RESOURCE_DROP_CONFIG[type].value
+      size = 32
     }
 
     const groundY = this.height * 0.75
@@ -426,18 +467,29 @@ export class GameEngine {
   }
 
   private collectItem(col: Collectible): void {
+    const coinMultiplier = 1 + (this.buffs['coin_multiplier'] || 0)
+    const invincibleBonus = this.buffs['invincible_duration'] || 0
+
     if (col.type === 'coin') {
-      this.gameState.coins += col.value
+      const coinValue = Math.floor(col.value * coinMultiplier)
+      this.gameState.coins += coinValue
       this.gameState.score += col.value * 10
       this.createCollectParticles(col.x + col.width / 2, col.y + col.height / 2, '#FFD700')
     } else if (col.type === 'star') {
-      this.gameState.coins += col.value
+      const coinValue = Math.floor(col.value * coinMultiplier)
+      this.gameState.coins += coinValue
       this.gameState.score += col.value * 20
       this.createCollectParticles(col.x + col.width / 2, col.y + col.height / 2, '#FFFF00')
     } else if (col.type === 'potion') {
       this.player.isInvincible = true
-      this.player.invincibleTimer = 180
+      this.player.invincibleTimer = BASE_INVINCIBLE_DURATION + invincibleBonus
       this.createCollectParticles(col.x + col.width / 2, col.y + col.height / 2, '#9932CC')
+    } else {
+      const resourceType = col.type as ResourceType
+      this.collectedResources[resourceType] = (this.collectedResources[resourceType] || 0) + col.value
+      const color = RESOURCE_DROP_CONFIG[resourceType]?.color || '#888'
+      this.gameState.score += col.value * 5
+      this.createCollectParticles(col.x + col.width / 2, col.y + col.height / 2, color)
     }
   }
 
@@ -454,6 +506,14 @@ export class GameEngine {
   }
 
   private gameOver(): void {
+    if (this.extraLives > 0) {
+      this.extraLives--
+      this.player.isInvincible = true
+      this.player.invincibleTimer = BASE_INVINCIBLE_DURATION + (this.buffs['invincible_duration'] || 0)
+      this.createCollectParticles(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2, '#FF69B4')
+      return
+    }
+
     this.gameState.isGameOver = true
     this.gameState.isRunning = false
 
@@ -466,7 +526,8 @@ export class GameEngine {
       this.onGameOverCallback(
         Math.floor(this.gameState.score),
         this.gameState.coins,
-        Math.floor(this.gameState.distance)
+        Math.floor(this.gameState.distance),
+        { ...this.collectedResources }
       )
     }
   }
@@ -498,6 +559,7 @@ export class GameEngine {
   start(): void {
     if (this.gameState.isRunning) return
     
+    this.applyBuffs()
     this.reset()
     this.gameState.isRunning = true
     this.gameState.isGameOver = false
@@ -514,6 +576,7 @@ export class GameEngine {
     this.obstacleTimer = OBSTACLE_MIN_INTERVAL * 0.5
     this.collectibleTimer = 15
     this.cloudTimer = 0
+    this.collectedResources = {}
     this.gameState = this.createInitialState()
     this.achievements = loadAchievements()
     
@@ -610,7 +673,12 @@ export class GameEngine {
     return [...this.achievements]
   }
 
-  onGameOver(callback: (score: number, coins: number, distance: number) => void): void {
+  onGameOver(callback: (
+    score: number,
+    coins: number,
+    distance: number,
+    resources: Partial<Record<ResourceType, number>>
+  ) => void): void {
     this.onGameOverCallback = callback
   }
 

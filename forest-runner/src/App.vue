@@ -3,10 +3,12 @@ import { ref, onMounted } from 'vue'
 import HomeScreen from './components/HomeScreen.vue'
 import GameCanvas from './components/GameCanvas.vue'
 import AchievementsScreen from './components/AchievementsScreen.vue'
+import CampScreen from './components/CampScreen.vue'
 import { loadAchievements } from './game/achievements'
-import type { Achievement } from './game/types'
+import { addRunRewards } from './game/campStore'
+import type { Achievement, ResourceType } from './game/types'
 
-type GameScreen = 'home' | 'game' | 'achievements'
+type GameScreen = 'home' | 'game' | 'achievements' | 'camp'
 
 const currentScreen = ref<GameScreen>('home')
 const highScore = ref(0)
@@ -35,16 +37,26 @@ function showAchievements() {
   currentScreen.value = 'achievements'
 }
 
+function showCamp() {
+  currentScreen.value = 'camp'
+}
+
 function goHome() {
   currentScreen.value = 'home'
   isPlaying.value = false
   loadHighScore()
 }
 
-function handleGameOver(score: number) {
+function handleGameOver(
+  score: number,
+  coins: number,
+  _distance: number,
+  resources: Partial<Record<ResourceType, number>>
+) {
   if (score > highScore.value) {
     highScore.value = score
   }
+  addRunRewards(coins, resources)
 }
 
 function handleAchievement(achievement: Achievement) {
@@ -52,6 +64,11 @@ function handleAchievement(achievement: Achievement) {
   if (idx >= 0) {
     achievements.value[idx] = { ...achievement, unlocked: true }
   }
+}
+
+function handleGoCampFromGame() {
+  isPlaying.value = false
+  currentScreen.value = 'camp'
 }
 
 onMounted(() => {
@@ -67,6 +84,7 @@ onMounted(() => {
       :high-score="highScore"
       @start="startGame"
       @show-achievements="showAchievements"
+      @show-camp="showCamp"
     />
     
     <GameCanvas
@@ -75,12 +93,19 @@ onMounted(() => {
       @game-over="handleGameOver"
       @achievement="handleAchievement"
       @go-home="goHome"
+      @go-camp="handleGoCampFromGame"
     />
     
     <AchievementsScreen
       v-else-if="currentScreen === 'achievements'"
       :achievements="achievements"
       @back="goHome"
+    />
+    
+    <CampScreen
+      v-else-if="currentScreen === 'camp'"
+      @back="goHome"
+      @start-game="startGame"
     />
   </div>
 </template>

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { ResourceType } from '../game/types'
+import { RESOURCES } from '../game/campData'
 
 const props = defineProps<{
   score: number
@@ -7,15 +9,28 @@ const props = defineProps<{
   distance: number
   highScore: number
   isNewRecord: boolean
+  collectedResources?: Partial<Record<ResourceType, number>>
 }>()
 
 defineEmits<{
   (e: 'restart'): void
   (e: 'home'): void
+  (e: 'goCamp'): void
 }>()
 
 const displayScore = computed(() => Math.floor(props.score))
 const displayDistance = computed(() => Math.floor(props.distance))
+
+const resourceList = computed(() => {
+  if (!props.collectedResources) return []
+  return Object.entries(props.collectedResources)
+    .filter(([, amount]) => amount && amount > 0)
+    .map(([type, amount]) => ({
+      type: type as ResourceType,
+      amount,
+      info: RESOURCES[type as ResourceType]
+    }))
+})
 </script>
 
 <template>
@@ -54,6 +69,17 @@ const displayDistance = computed(() => Math.floor(props.distance))
         </div>
       </div>
 
+      <div v-if="resourceList.length > 0" class="resources-rewards">
+        <h3 class="rewards-title">🎁 收集的资源</h3>
+        <div class="resource-grid">
+          <div v-for="resource in resourceList" :key="resource.type" class="resource-item">
+            <span class="resource-icon">{{ resource.info?.icon }}</span>
+            <span class="resource-name">{{ resource.info?.name }}</span>
+            <span class="resource-amount">x{{ resource.amount }}</span>
+          </div>
+        </div>
+      </div>
+
       <div class="high-score-info">
         <span class="trophy">🏆</span>
         <span>最高分: {{ highScore }}</span>
@@ -63,6 +89,10 @@ const displayDistance = computed(() => Math.floor(props.distance))
         <button class="btn btn-restart" @click="$emit('restart')">
           <span class="btn-icon">🔄</span>
           再来一次
+        </button>
+        <button class="btn btn-camp" @click="$emit('goCamp')">
+          <span class="btn-icon">🏕️</span>
+          前往营地
         </button>
         <button class="btn btn-home" @click="$emit('home')">
           <span class="btn-icon">🏠</span>
@@ -277,6 +307,53 @@ const displayDistance = computed(() => Math.floor(props.distance))
   transform: scale(0.97);
 }
 
+.resources-rewards {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 15px;
+  border: 2px solid #90EE90;
+}
+
+.rewards-title {
+  font-size: 16px;
+  color: #2d5a27;
+  margin: 0 0 10px 0;
+}
+
+.resource-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.resource-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: white;
+  padding: 8px 10px;
+  border-radius: 8px;
+  min-width: 60px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.resource-icon {
+  font-size: 24px;
+}
+
+.resource-name {
+  font-size: 11px;
+  color: #666;
+}
+
+.resource-amount {
+  font-size: 14px;
+  font-weight: bold;
+  color: #2d5a27;
+}
+
 .btn-restart {
   background: linear-gradient(180deg, #4CAF50 0%, #388E3C 100%);
   color: white;
@@ -285,6 +362,17 @@ const displayDistance = computed(() => Math.floor(props.distance))
 
 .btn-restart:active {
   box-shadow: 0 2px 0 #2E7D32;
+  transform: translateY(2px) scale(0.97);
+}
+
+.btn-camp {
+  background: linear-gradient(180deg, #FF8C00 0%, #D2691E 100%);
+  color: white;
+  box-shadow: 0 4px 0 #8B4513;
+}
+
+.btn-camp:active {
+  box-shadow: 0 2px 0 #8B4513;
   transform: translateY(2px) scale(0.97);
 }
 

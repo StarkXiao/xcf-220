@@ -1,4 +1,4 @@
-import type { Player, Obstacle, Collectible, Cloud, Particle } from './types'
+import type { Player, Obstacle, Collectible, Cloud, Particle, ResourceType } from './types'
 
 const COLORS = {
   skyTop: '#87CEEB',
@@ -18,7 +18,12 @@ const COLORS = {
   coin: '#FFD700',
   star: '#FFFF00',
   potion: '#9932CC',
-  cloud: '#FFFFFF'
+  cloud: '#FFFFFF',
+  wood: '#8B4513',
+  stone: '#708090',
+  herb: '#32CD32',
+  crystal: '#00CED1',
+  berry: '#8B008B'
 }
 
 export class GameRenderer {
@@ -334,6 +339,13 @@ export class GameRenderer {
         case 'potion':
           this.drawPotion(col)
           break
+        case 'wood':
+        case 'stone':
+        case 'herb':
+        case 'crystal':
+        case 'berry':
+          this.drawResource(col)
+          break
       }
     })
   }
@@ -428,6 +440,113 @@ export class GameRenderer {
     this.ctx.arc(cx - width * 0.1, y + height * 0.4 + bubbleOffset, 4, 0, Math.PI * 2)
     this.ctx.arc(cx + width * 0.1, y + height * 0.6 + bubbleOffset, 3, 0, Math.PI * 2)
     this.ctx.fill()
+  }
+
+  private drawResource(col: Collectible): void {
+    const { x, y, width, height, type } = col
+    const cx = x + width / 2
+    const cy = y + height / 2
+    const pulse = 1 + Math.sin(Date.now() * 0.005) * 0.08
+    const resourceType = type as ResourceType
+    const color = COLORS[resourceType] || '#888'
+
+    const glow = this.ctx.createRadialGradient(cx, cy, 0, cx, cy, width * 0.8)
+    glow.addColorStop(0, color + '66')
+    glow.addColorStop(1, color + '00')
+    this.ctx.fillStyle = glow
+    this.ctx.beginPath()
+    this.ctx.arc(cx, cy, width * 0.7 * pulse, 0, Math.PI * 2)
+    this.ctx.fill()
+
+    switch (resourceType) {
+      case 'wood':
+        this.ctx.fillStyle = color
+        this.ctx.fillRect(cx - width * 0.4, cy - height * 0.15, width * 0.8, height * 0.3)
+        this.ctx.fillStyle = '#D2691E'
+        this.ctx.beginPath()
+        this.ctx.ellipse(cx - width * 0.4, cy, width * 0.1, height * 0.15, 0, 0, Math.PI * 2)
+        this.ctx.fill()
+        this.ctx.beginPath()
+        this.ctx.ellipse(cx + width * 0.4, cy, width * 0.1, height * 0.15, 0, 0, Math.PI * 2)
+        this.ctx.fill()
+        this.ctx.strokeStyle = '#654321'
+        this.ctx.lineWidth = 1
+        for (let i = 0; i < 3; i++) {
+          this.ctx.beginPath()
+          this.ctx.ellipse(cx - width * 0.4, cy, 3 + i * 3, (height * 0.15 - 3) * (0.3 + i * 0.25), 0, 0, Math.PI * 2)
+          this.ctx.stroke()
+        }
+        break
+
+      case 'stone':
+        this.ctx.fillStyle = color
+        this.ctx.beginPath()
+        this.ctx.moveTo(cx - width * 0.4, cy + height * 0.35)
+        this.ctx.quadraticCurveTo(cx - width * 0.45, cy - height * 0.2, cx, cy - height * 0.4)
+        this.ctx.quadraticCurveTo(cx + width * 0.45, cy - height * 0.25, cx + width * 0.4, cy + height * 0.35)
+        this.ctx.closePath()
+        this.ctx.fill()
+        this.ctx.fillStyle = '#A9A9A9'
+        this.ctx.beginPath()
+        this.ctx.ellipse(cx - width * 0.1, cy - height * 0.05, width * 0.15, height * 0.1, -0.3, 0, Math.PI * 2)
+        this.ctx.fill()
+        break
+
+      case 'herb':
+        this.ctx.fillStyle = color
+        for (let i = 0; i < 3; i++) {
+          const angle = (i * Math.PI * 2) / 3 - Math.PI / 2
+          const lx = cx + Math.cos(angle) * width * 0.25
+          const ly = cy + Math.sin(angle) * height * 0.25
+          this.ctx.beginPath()
+          this.ctx.ellipse(lx, ly, width * 0.15, height * 0.25, angle, 0, Math.PI * 2)
+          this.ctx.fill()
+        }
+        this.ctx.fillStyle = '#228B22'
+        this.ctx.beginPath()
+        this.ctx.arc(cx, cy, width * 0.1, 0, Math.PI * 2)
+        this.ctx.fill()
+        break
+
+      case 'crystal':
+        this.ctx.fillStyle = color
+        this.ctx.beginPath()
+        this.ctx.moveTo(cx, cy - height * 0.4)
+        this.ctx.lineTo(cx + width * 0.3, cy - height * 0.1)
+        this.ctx.lineTo(cx + width * 0.2, cy + height * 0.4)
+        this.ctx.lineTo(cx - width * 0.2, cy + height * 0.4)
+        this.ctx.lineTo(cx - width * 0.3, cy - height * 0.1)
+        this.ctx.closePath()
+        this.ctx.fill()
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
+        this.ctx.beginPath()
+        this.ctx.moveTo(cx - width * 0.1, cy - height * 0.25)
+        this.ctx.lineTo(cx, cy - height * 0.3)
+        this.ctx.lineTo(cx + width * 0.05, cy - height * 0.1)
+        this.ctx.lineTo(cx - width * 0.15, cy - height * 0.05)
+        this.ctx.closePath()
+        this.ctx.fill()
+        break
+
+      case 'berry':
+        for (let i = 0; i < 3; i++) {
+          const bx = cx + (i - 1) * width * 0.25
+          const by = cy + (i === 1 ? -height * 0.1 : height * 0.05)
+          this.ctx.fillStyle = color
+          this.ctx.beginPath()
+          this.ctx.arc(bx, by, width * 0.18, 0, Math.PI * 2)
+          this.ctx.fill()
+          this.ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'
+          this.ctx.beginPath()
+          this.ctx.arc(bx - width * 0.05, by - width * 0.05, width * 0.06, 0, Math.PI * 2)
+          this.ctx.fill()
+        }
+        this.ctx.fillStyle = '#228B22'
+        this.ctx.beginPath()
+        this.ctx.ellipse(cx, cy - height * 0.28, width * 0.15, height * 0.08, 0, 0, Math.PI * 2)
+        this.ctx.fill()
+        break
+    }
   }
 
   drawParticles(particles: Particle[]): void {

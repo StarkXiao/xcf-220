@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { GameEngine } from '../game/GameEngine'
-import type { Achievement } from '../game/types'
+import type { Achievement, ResourceType } from '../game/types'
 import GameOverScreen from './GameOverScreen.vue'
 
 const props = defineProps<{
@@ -9,9 +9,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'gameOver', score: number, coins: number, distance: number): void
+  (e: 'gameOver', score: number, coins: number, distance: number, resources: Partial<Record<ResourceType, number>>): void
   (e: 'achievement', achievement: Achievement): void
   (e: 'goHome'): void
+  (e: 'goCamp'): void
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -20,18 +21,20 @@ const isGameOver = ref(false)
 const finalScore = ref(0)
 const finalCoins = ref(0)
 const finalDistance = ref(0)
+const collectedResources = ref<Partial<Record<ResourceType, number>>>({})
 const highScore = ref(0)
 const isNewRecord = ref(false)
 const achievementToast = ref<Achievement | null>(null)
 
-function handleGameOver(score: number, coins: number, distance: number) {
+function handleGameOver(score: number, coins: number, distance: number, resources: Partial<Record<ResourceType, number>>) {
   isGameOver.value = true
   finalScore.value = score
   finalCoins.value = coins
   finalDistance.value = distance
+  collectedResources.value = resources
   isNewRecord.value = score > highScore.value
   highScore.value = gameEngine.value?.getHighScore() || 0
-  emit('gameOver', score, coins, distance)
+  emit('gameOver', score, coins, distance, resources)
 }
 
 function handleAchievement(achievement: Achievement) {
@@ -54,6 +57,13 @@ function goHome() {
   isNewRecord.value = false
   gameEngine.value?.stop()
   emit('goHome')
+}
+
+function goCamp() {
+  isGameOver.value = false
+  isNewRecord.value = false
+  gameEngine.value?.stop()
+  emit('goCamp')
 }
 
 watch(() => props.isPlaying, (playing) => {
@@ -96,8 +106,10 @@ onUnmounted(() => {
       :distance="finalDistance"
       :high-score="highScore"
       :is-new-record="isNewRecord"
+      :collected-resources="collectedResources"
       @restart="restartGame"
       @home="goHome"
+      @go-camp="goCamp"
     />
   </div>
 </template>
